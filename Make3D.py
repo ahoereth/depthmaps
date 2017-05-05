@@ -38,7 +38,7 @@ TEST_DATA = 'http://www.cs.cornell.edu/~asaxena/learningdepth/Test134.tar.gz'
 TEST_TARGETS = 'http://www.cs.cornell.edu/~asaxena/learningdepth/Test134Depth.tar.gz'
 DATA_DIRECTORY = 'data'
 IMAGE_SHAPE = (2272, 1704)
-IMAGE_SIZE = 128
+IMAGE_SIZE = 304
 NUM_CHANNELS = 3
 
 
