@@ -23,6 +23,7 @@ class Model:
 
         self.training = tf.placeholder_with_default(False, None)
 
+        # Create two dataflows, one for the train and one for test split.
         shapes = (self.input_shape, self.target_shape)
         self.train_dataflow = Dataflow(self.session, self.dataset.train_files,
                                        shapes, batchsize=self.batchsize,
@@ -30,10 +31,14 @@ class Model:
         self.test_dataflow = Dataflow(self.session, self.dataset.test_files,
                                       shapes, batchsize=100, workers=1)
 
+        # Convert all images to float values from 0 to 1.
         train_inputs, train_targets = map(to_float, self.train_dataflow.out)
         test_inputs, test_targets = map(to_float, self.train_dataflow.out)
 
-        build_network = tf.make_template('network', self.build_network)
+        # To handle the train and test split there are two networks which
+        # share variables. This allows us to use them independently.
+        build_network = tf.make_template('network', self.build_network,
+                                         training=self.training)
         self.train_net = build_network(train_inputs, train_targets)
         self.test_net = build_network(test_inputs, test_targets)
 

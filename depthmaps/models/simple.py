@@ -9,7 +9,7 @@ class Simple(Model):
     batchsize = 32
 
     def __init__(self, dataset):
-        super(Simple, self).__init__(dataset)
+        super(Simple, self).__init__(dataset=dataset)
 
     def build_network(self, inputs, targets):
         net = tf.layers.conv2d(inputs, 16, 16, 2, activation=tf.nn.relu)
