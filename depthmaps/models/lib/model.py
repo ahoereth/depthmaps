@@ -29,7 +29,8 @@ class Model:
                                        shapes, batchsize=self.batchsize,
                                        workers=2)
         self.test_dataflow = Dataflow(self.session, self.dataset.test_files,
-                                      shapes, batchsize=100, workers=1)
+                                      shapes, len(self.dataset.test_files),
+                                      workers=1)
 
         # Convert all images to float values from 0 to 1.
         train_inputs, train_targets = map(to_float, self.train_dataflow.out)

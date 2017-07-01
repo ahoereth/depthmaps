@@ -1,6 +1,16 @@
 """Downloads and extracts the Make3D depth image dataset.
 
 https://cs.stanford.edu/group/reconstruction3d/Readme
+
+@inproceedings{Saxena2009,
+    author = "Ashutosh Saxena and Min Sun and Andrew Y. Ng",
+    title = {Make3D: Learning 3D Scene Structure from a Single Still Image},
+    journal = {IEEE PAMI},
+    volume = {30},
+    number = {5},
+    pages = {824--840},
+    year = {2009}
+}
 """
 import os
 from glob import glob

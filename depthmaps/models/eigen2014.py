@@ -1,11 +1,11 @@
 """Implementation of Eigen et al 2014.
 
 @inproceedings{Eigen2014,
-  title={Depth map prediction from a single image using a multi-scale deep network},
-  author={Eigen, David and Puhrsch, Christian and Fergus, Rob},
-  booktitle={Advances in neural information processing systems},
-  pages={2366--2374},
-  year={2014}
+  title = {Depth map prediction from a single image using a multi-scale deep network},
+  author = {Eigen, David and Puhrsch, Christian and Fergus, Rob},
+  booktitle = {Advances in neural information processing systems},
+  pages = {2366--2374},
+  year = {2014}
 }
 """
 import tensorflow as tf
