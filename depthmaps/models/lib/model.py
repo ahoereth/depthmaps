@@ -36,7 +36,7 @@ class Model:
 
         # Convert all images to float values from 0 to 1.
         train_inputs, train_targets = map(to_float, self.train_dataflow.out)
-        test_inputs, test_targets = map(to_float, self.train_dataflow.out)
+        test_inputs, test_targets = map(to_float, self.test_dataflow.out)
 
         # To handle the train and test split there are two networks which
         # share variables. This allows us to use them independently.
@@ -85,3 +85,9 @@ class Model:
         # Wait for all workers to be done.
         for worker in self.workers:
             worker.join()
+
+    def evaluate(self):
+        data, outputs = self.session.run([self.test_dataflow.out,
+                                          self.test_net.output])
+        inputs, targets = data
+        return list(zip(inputs, targets, outputs))
