@@ -1,133 +1,135 @@
-"""Downloads and extracts the Make3D depth image dataset.
-https://cs.stanford.edu/group/reconstruction3d/Readme
 
-Usage:
-```python
+# coding: utf-8
+
+# # Demo of the Make3D dataset
+# http://make3d.cs.cornell.edu/data.html#make3d
+
+# In[ ]:
+
+
+import tensorflow as tf
+import numpy as np
+import scipy as sp
+from matplotlib import pyplot as plt
+
 from Make3D import train_pairs, test_pairs
 
-# Visualize some samples.
-from matplotlib import pyplot as plt
-from scipy import misc
-for rgb, d in train_pairs[:10]:
-    _, (ax1, ax2) = plt.subplots(1, 2)
+
+# # Visualize samples from the dataset
+
+# In[ ]:
+
+
+_, axis = plt.subplots(5, 2, figsize=(10,20))
+plt.tight_layout()
+for (rgb, d), (ax1, ax2) in zip(train_pairs[:10], axis):
+    ax1.axis('off'), ax2.axis('off')
     ax1.imshow(rgb)
-    ax2.imshow(misc.imresize(d, rgb.shape))
+    ax2.imshow(sp.misc.imresize(d, rgb.shape))
 plt.show()
 
-# Extract lists of data and target lists for training.
+
+# # Take a naive convolutional network approach
+
+# ## Simplify dataset first
+# - Convert to grayscale
+# - Scale targets down so the convolutional network can use striding and so we do not need padding
+# - Normalize values
+
+# In[ ]:
+
+
 train_data, train_targets = zip(*train_pairs)
 test_data, test_targets = zip(*test_pairs)
-```
-"""
 
-import tarfile
-import os
-import shutil
-from urllib import request
-from glob import glob
+def rgb2gray(rgb):
+    return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
 
-import numpy as np
-from scipy.io import loadmat
-from scipy import misc as spmisc
-from PIL import Image
+train_data = [sp.misc.imresize(rgb2gray(img), (128, 96))/127.5 - 1 for img in train_data]
+train_targets = [sp.misc.imresize(img, (47, 31))/127.5 - 1 for img in train_targets]
+test_data = [sp.misc.imresize(rgb2gray(img), (128, 96))/ 127.5 - 1 for img in test_data]
+test_targets = [sp.misc.imresize(img, (47, 31))/127.5 - 1 for img in test_targets]
 
+train_x, train_t = np.asarray(train_data), np.asarray(train_targets)
+test_x, test_t = np.asarray(test_data), np.asarray(test_targets)
 
-TRAIN_DATA = 'http://cs.stanford.edu/group/reconstruction3d/Train400Img.tar.gz'
-TRAIN_TARGETS = 'http://cs.stanford.edu/group/reconstruction3d/Train400Depth.tgz'
-TEST_DATA = 'http://www.cs.cornell.edu/~asaxena/learningdepth/Test134.tar.gz'
-TEST_TARGETS = 'http://www.cs.cornell.edu/~asaxena/learningdepth/Test134Depth.tar.gz'
-DATA_DIRECTORY = 'data'
-IMAGE_SHAPE = (2272, 1704)
-IMAGE_SIZE = 304
-NUM_CHANNELS = 3
+print('train input/target shapes', train_data[0].shape, train_targets[0].shape)
+print('train input min/max/ptp', np.min(train_data), np.max(train_data), np.ptp(train_data))
+print('train target min/max/ptp', np.min(train_targets), np.max(train_targets), np.ptp(train_targets))
 
-
-def maybe_download(url):
-    os.makedirs(DATA_DIRECTORY, exist_ok=True)
-    filename = os.path.basename(url)
-    filepath = os.path.join(DATA_DIRECTORY, filename)
-    if not os.path.exists(filepath):
-        print('Downloading {}'.format(filename))
-        filepath, _ = request.urlretrieve(url, filepath)
-        print('Successfully downloaded {}'.format(filename))
-    return filepath
+tuples = zip(train_x[:10], train_t[:10])
+fig, axis = plt.subplots(5, 2, figsize=(10,20))
+plt.tight_layout(), plt.gray()
+for (rgb, d), (ax1, ax2) in zip(tuples, axis):
+    ax1.axis('off'), ax2.axis('off')
+    ax1.imshow(rgb)
+    ax2.imshow(sp.misc.imresize(d, rgb.shape))
+plt.show()
 
 
-def extract(filename, targets=False):
-    ext = '.tar.gz' if not filename.endswith('.tgz') else '.tgz'
-    orgdir = filename[:-len(ext)]
-    thumbdir = orgdir + '_128'
+# ## Define Tensorflow Graph
 
-    if os.path.exists(thumbdir):
-        return glob(os.path.join(thumbdir, '*.jpg'))
-
-    os.makedirs(thumbdir, exist_ok=True)
-
-    print('Extracting {} to {}'.format(filename, orgdir))
-    with tarfile.open(filename) as tar:
-        tar.extractall(orgdir)
-
-    result = []
-    if targets:
-        pattern = os.path.join(orgdir, '**', '*.mat')
-        for infile in glob(pattern, recursive=True):
-            noext, _ = os.path.splitext(os.path.basename(infile))
-            outfile = os.path.join(thumbdir, noext + '.jpg')
-            try:
-                depth = loadmat(infile)
-                grid = depth['Position3DGrid'][:, :, 3]
-                img = spmisc.toimage(grid)
-                img.save(outfile, 'JPEG')
-            except ValueError:
-                print('Couldn\'t open {}'.format(infile))
-            else:
-                result.append(outfile)
-    else:
-        print('Rescaling images from {} to {}'.format(orgdir, thumbdir))
-        pattern = os.path.join(orgdir, '**', '*.jpg')
-        for infile in glob(pattern, recursive=True):
-            outfile = os.path.join(thumbdir, os.path.basename(infile))
-            try:
-                img = Image.open(infile)
-                img.thumbnail((IMAGE_SIZE, IMAGE_SIZE), Image.ANTIALIAS)
-                img.save(outfile, 'JPEG')
-            except IOError:
-                print('Couldn\'t rescale {}'.format(infile))
-            else:
-                result.append(outfile)
-
-    print('Removing {} and not removing {}'.format(orgdir, filename))
-    shutil.rmtree(orgdir)
-    # os.remove(filename)
-    return result
+# In[ ]:
 
 
-def matchpairs(data, targets, images=True):
-    pairs = []
-    for datafile in data:
-        _, right = datafile.split('img')
-        try:
-            targetfile = next(t for t in targets if t.endswith(right))
-            if images:
-                rgb = spmisc.imread(datafile)
-                d = spmisc.imread(targetfile)
-                pairs.append((rgb, d))
-            else:
-                pairs.append((datafile, targetfile))
-        except StopIteration:
-            pass
-    return pairs
+# MODEL
+x = tf.placeholder(tf.float32, (None, 128, 96))
+t = tf.placeholder(tf.float32, (None, 47, 31))
+
+x_ = tf.reshape(x, (-1, 128, 96, 1))
+net = tf.layers.conv2d(x_, filters=16, kernel_size=16, strides=2, activation=tf.nn.relu)
+net = tf.layers.conv2d(net, filters=16, kernel_size=8, strides=1, activation=tf.nn.relu)
+net = tf.layers.conv2d(net, filters=32, kernel_size=4, strides=1, activation=tf.nn.relu)
+net = tf.layers.conv2d(net, filters=1, kernel_size=1)
+
+y = tf.squeeze(net, axis=3)
+
+loss = tf.reduce_mean(tf.square(t - y))
+optimizer = tf.train.AdamOptimizer(0.0001).minimize(loss)
 
 
-train_data_filename = maybe_download(TRAIN_DATA)
-train_targets_filename = maybe_download(TRAIN_TARGETS)
-test_data_filename = maybe_download(TEST_DATA)
-test_targets_filename = maybe_download(TEST_TARGETS)
+# ## Train
+# Regularily evaluate the loss on the test data and compute test predictions when done with training.
+# 
+# **10000 epochs is nothing one wants to run on the CPU.**
 
-train_data = extract(train_data_filename)
-train_targets = extract(train_targets_filename, targets=True)
-test_data = extract(test_data_filename)
-test_targets = extract(test_targets_filename, targets=True)
+# In[ ]:
 
-train_pairs = matchpairs(train_data, train_targets)
-test_pairs = matchpairs(test_data, test_targets)
+
+def batches(x, y, batchsize=32):
+    permute = np.random.permutation(len(x))
+    for i in range(0, len(x)-batchsize, batchsize):
+        indices = permute[i:i+batchsize]
+        yield x[indices], y[indices]    
+
+
+# In[ ]:
+
+
+sess = tf.Session()
+
+sess.run(tf.global_variables_initializer())
+
+for epoch in range(2000 + 1):
+    for batch_x, batch_t in batches(train_x, train_t, 32):
+        sess.run(optimizer, {x: batch_x, t: batch_t})
+    print(epoch, sess.run(loss, {x: test_x, t: test_t}))
+
+test_p = sess.run(y, {x: test_x})
+
+
+# ## Visualize results on test data
+
+# In[ ]:
+
+
+triples = zip(test_x[:10], test_t[:10], test_p[:10])
+_, axis = plt.subplots(5, 3, figsize=(10,20))
+plt.tight_layout(), plt.gray()
+for (rgb, d, p), (ax1, ax2, ax3) in zip(triples, axis):
+    ax1.axis('off'), ax2.axis('off'), ax3.axis('off')
+    ax1.imshow(rgb)
+    ax2.imshow(sp.misc.imresize(d, rgb.shape))
+    ax3.imshow(sp.misc.imresize(p, rgb.shape))
+plt.show()
+
