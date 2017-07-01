@@ -1,4 +1,6 @@
 from collections import namedtuple
+from queue import Queue, Empty
+from threading import Thread
 
 import tensorflow as tf
 
@@ -17,7 +19,7 @@ class Model:
     target_shape = (0, 0, 0)
     batchsize = 32
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, workers=1):
         self.dataset = dataset
         self.session = tf.Session()
 
@@ -27,7 +29,7 @@ class Model:
         shapes = (self.input_shape, self.target_shape)
         self.train_dataflow = Dataflow(self.session, self.dataset.train_files,
                                        shapes, batchsize=self.batchsize,
-                                       workers=2)
+                                       workers=workers)
         self.test_dataflow = Dataflow(self.session, self.dataset.test_files,
                                       shapes, len(self.dataset.test_files),
                                       workers=1)
@@ -45,15 +47,41 @@ class Model:
 
         self.session.run(tf.global_variables_initializer())
 
+        self.train_queue = Queue(len(self.dataset.train_files))
+        self.workers = [Thread(target=self.train_worker, daemon=True)
+                        for _ in range(workers)]
+
     def build_network(self, inputs, targets):
         """Create the neural network."""
         raise NotImplementedError
 
-    def train(self, epochs=1, test_frequency=1):
-        """Train the model."""
-        for epoch in range(1, epochs + 1):
-            for _ in range(len(self.dataset.train_files) // self.batchsize):
-                self.session.run(self.train_net.train, {self.training: True})
-            if not epoch % test_frequency:
+    def train_worker(self):
+        while True:
+            try:
+                epoch, task = self.train_queue.get(timeout=5)
+            except Empty:
+                break
+
+            if task == 'eval':
                 loss = self.session.run(self.test_net.loss)
                 print('Epoch {} with test loss {:.5f}.'.format(epoch, loss))
+                continue
+
+            self.session.run(self.train_net.train, {self.training: True})
+
+    def train(self, epochs=1, test_frequency=1):
+        """Train the model."""
+        # Start workers.
+        for worker in self.workers:
+            worker.start()
+
+        # Allow a specific amount of training steps with regular evaluations.
+        for epoch in range(1, epochs + 1):
+            for _ in range(len(self.dataset.train_files) // self.batchsize):
+                self.train_queue.put((epoch, 'train'))
+            if not epoch % test_frequency:
+                self.train_queue.put((epoch, 'eval'))
+
+        # Wait for all workers to be done.
+        for worker in self.workers:
+            worker.join()

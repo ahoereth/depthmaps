@@ -5,7 +5,7 @@ from models import Simple, Eigen2014
 
 
 dataset = Nyu()
-model = Eigen2014(dataset)
+model = Simple(dataset, workers=2)
 
 print('First epoch will be slow due to data preprocessing and caching...')
-model.train(epochs=2)
+model.train(epochs=10)

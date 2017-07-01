@@ -18,8 +18,8 @@ class Eigen2014(Model):
     target_shape = (74, 55, 1)
     batchsize = 32
 
-    def __init__(self, dataset):
-        super(Eigen2014, self).__init__(dataset=dataset)
+    def __init__(self, *args, **kwargs):
+        super(Eigen2014, self).__init__(*args, **kwargs)
 
     def build_network(self, inputs, targets, training=False):
         """Create a coarse/fine convolutional neural network."""
