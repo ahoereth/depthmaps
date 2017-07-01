@@ -19,8 +19,7 @@ from pathlib import Path
 from scipy import misc as spmisc, io as spio
 from PIL import Image
 
-from .utils import maybe_extract, maybe_download
-from .dataset import Dataset, datadirectory
+from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
 
 
 FILES = {
@@ -32,55 +31,49 @@ FILES = {
 
 
 class Make3D(Dataset):
-    input_shape = (2272 // 3, 1704 // 3)
-    target_shape = (55, 305)
+    input_shape = (480, 320)
+    target_shape = (55 * 480 // 320, 55)
+    # input_shape = (2272, 1704)
+    # target_shape = (55, 305)
 
     def __init__(self, cleanup_on_exit=False):
         super(Make3D, self).__init__(cleanup_on_exit=cleanup_on_exit)
+        directory = DATA_DIR / 'make3d'
         for name, url in FILES.items():
-            archive, _ = maybe_download(datadirectory, url)
-            directory, extracted = maybe_extract(archive)
-            self._tempdirs.append(directory)
-            if not extracted:
-                continue
-            if name.endswith('data'):
-                files = []
-                for path in glob(str(directory / '**/*.jpg'), recursive=True):
-                    try:
-                        with Image.open(path) as img:
-                            img = img.resize(self.input_shape)
-                            img.save(path)
-                    except (ValueError, OSError):
-                        print("Couldn't open {}.".format(path))
-                    else:
-                        files.append(path)
-                self.files[name] = files
-            elif name.endswith('targets'):
-                files = []
-                for path in glob(str(directory / '**/*.mat'), recursive=True):
-                    try:
-                        mat = spio.loadmat(path)['Position3DGrid'][..., 3]
-                        img = spmisc.toimage(mat)
-                    except ValueError:
-                        print("Couldn't open {}.".format(path))
-                    else:
-                        files.append(str(Path(path).with_suffix('.jpg')))
-                        img.save(files[-1], 'JPEG')
-                    os.remove(path)
-                self.files[name] = files
+            archive, _ = maybe_download(directory, url)
+            target_dir, extracted = maybe_extract(archive)
+            self._tempdirs.append(target_dir)
+            if extracted:
+                self._preprocess_data(name, target_dir)
 
-        self.train_files = self.match_pairs(self.files['train_data'],
-                                            self.files['train_targets'])
-        self.test_files = self.match_pairs(self.files['test_data'],
-                                           self.files['test_targets'])
+        # Create train/test split.
+        self._split(directory)
 
-    def match_pairs(self, data, targets):
-        pairs = []
-        for datafile in data:
-            _, identifier = datafile.split('img')
-            try:
-                targetfile = next(t for t in targets if t.endswith(identifier))
-                pairs.append((datafile, targetfile))
-            except StopIteration:
-                pass
-        return pairs
+    def _preprocess_data(self, name, directory):
+        """Preprocess a part of the 4 way split dataset."""
+        if name.endswith('data'):
+            for path in glob(str(directory / '**/*.jpg'), recursive=True):
+                try:
+                    with Image.open(path) as img:
+                        img = img.resize(self.input_shape)
+                except (ValueError, OSError):
+                    print("Couldn't open {}.".format(path))
+                else:
+                    path = Path(path)
+                    name = path.name.split('img-')[1]
+                    target = (path.parent / name).with_suffix('.image.jpg')
+                    img.save(target, 'JPEG')
+                os.remove(path)
+        elif name.endswith('targets'):
+            for path in glob(str(directory / '**/*.mat'), recursive=True):
+                try:
+                    mat = spio.loadmat(path)['Position3DGrid'][..., 3]
+                    img = spmisc.toimage(mat)
+                except ValueError:
+                    print("Couldn't open {}.".format(path))
+                else:
+                    path = Path(path)
+                    name = path.name.split('depth_sph_corr-')[1]
+                    target = (path.parent / name).with_suffix('.depth.jpg')
+                    img.save(target, 'JPEG')
+                os.remove(path)
