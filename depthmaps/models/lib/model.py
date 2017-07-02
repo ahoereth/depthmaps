@@ -11,7 +11,8 @@ Network = namedtuple('Network', ('output', 'train', 'loss'))
 
 
 def to_float(images):
-    return tf.image.convert_image_dtype(images, tf.float32)
+    """Convert uint8 images to float and scale them from -1 to 1."""
+    return (tf.image.convert_image_dtype(images, tf.float32) - .5) * 2
 
 
 class Model:
@@ -22,6 +23,9 @@ class Model:
     def __init__(self, dataset, workers=1):
         self.dataset = dataset
         self.session = tf.Session()
+
+        tf.train.create_global_step()
+        self.step = tf.train.get_global_step()
 
         self.training = tf.placeholder_with_default(False, None)
 
@@ -56,20 +60,27 @@ class Model:
         raise NotImplementedError
 
     def train_worker(self):
+        """Train until no more training steps are queued."""
         while True:
             try:
-                epoch, task = self.train_queue.get(timeout=5)
+                epoch, task = self.train_queue.get(timeout=2)
             except Empty:
                 break
 
-            if task == 'eval':
+            if task == 'done':
+                print('Epoch {} done.'.format(epoch))
+            elif task == 'eval':
                 loss = self.session.run(self.test_net.loss)
                 print('Epoch {} with test loss {:.5f}.'.format(epoch, loss))
-                continue
+            elif task == 'verbose':
+                _, loss = self.session.run(
+                    [self.train_net.train, self.train_net.loss],
+                    {self.training: True})
+                print('Epoch {} with train loss {:.5f}.'.format(epoch, loss))
+            else:
+                self.session.run(self.train_net.train, {self.training: True})
 
-            self.session.run(self.train_net.train, {self.training: True})
-
-    def train(self, epochs=1, test_frequency=1):
+    def train(self, epochs=1, test_frequency=1, test_on_testset=False):
         """Train the model."""
         # Start workers.
         for worker in self.workers:
@@ -79,8 +90,13 @@ class Model:
         for epoch in range(1, epochs + 1):
             for _ in range(len(self.dataset.train_files) // self.batchsize):
                 self.train_queue.put((epoch, 'train'))
-            if not epoch % test_frequency:
-                self.train_queue.put((epoch, 'eval'))
+            if test_frequency > 0 and not epoch % test_frequency:
+                if test_on_testset:
+                    self.train_queue.put((epoch, 'evaluate'))
+                else:
+                    self.train_queue.put((epoch, 'verbose'))
+            elif test_frequency <= 0:
+                self.train_queue.put((epoch, 'done'))
 
         # Wait for all workers to be done.
         for worker in self.workers:

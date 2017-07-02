@@ -18,5 +18,5 @@ class Simple(Model):
         net = tf.layers.conv2d(net, 32, 4, 1, activation=tf.nn.relu)
         outputs = tf.layers.conv2d(net, 1, 1, activation=tf.identity)
         loss = tf.reduce_mean(tf.squared_difference(targets, outputs))
-        train = tf.train.AdamOptimizer().minimize(loss)
+        train = tf.train.AdamOptimizer().minimize(loss, global_step=self.step)
         return Network(outputs, train, loss)

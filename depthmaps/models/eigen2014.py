@@ -23,10 +23,6 @@ class Eigen2014(Model):
 
     def build_network(self, inputs, targets, training=False):
         """Create a coarse/fine convolutional neural network."""
-        # Scale values from -1 to 1
-        inputs = (inputs - .5) * 2
-        targets = (targets - .5) * 2
-
         with tf.variable_scope('coarse'):
             coarse = tf.layers.conv2d(inputs, 96, 11, activation=tf.nn.relu,
                                       strides=4)
@@ -56,5 +52,6 @@ class Eigen2014(Model):
             outputs = tf.layers.conv2d(fine, 1, 5, padding='same')
 
         loss = tf.reduce_mean(tf.squared_difference(targets, outputs))
-        train = tf.train.AdamOptimizer(1e-4).minimize(loss)
+        train = tf.train.AdamOptimizer(1e-4).minimize(loss,
+                                                      global_step=self.step)
         return Network(outputs, train, loss)
