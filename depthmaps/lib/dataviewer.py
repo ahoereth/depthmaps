@@ -3,20 +3,30 @@
 Props @shoeffner:
 https://github.com/shoeffner/ann3depth/blob/master/src/visualize/dataviewer.py
 """
-import itertools
+from itertools import cycle
+
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import image
-from mpl_toolkits.mplot3d import Axes3D
 
 
 class Dataviewer:
 
     def __init__(self, dataset, *,
                  rows=2,
-                 keys=['image', 'depth'],
+                 keys=['img', 'depth'],
                  cmaps={'depth': 'jet'},
                  name=None):
+        """Create a new DataBrowser.
+
+        Args:
+            dataset (List): List of samples, each sample can either be a
+                List or Tuple containing in order of or object instances
+                with attributes matching the values of the `keys` arg.
+            rows (int): Number of rows to display.
+            cmaps (Dict): Dict specifying colormaps for specific keys.
+            name (str): Databrowser name.
+        """
         self.dataset = dataset
         self.rows = rows
         self.keys = keys
@@ -51,9 +61,8 @@ class Dataviewer:
 
     def update_axes(self):
         first = self.current
-        keys = enumerate(self.keys)
         for axes, img, (col, key) in zip(self.axes, self.images,
-                                         itertools.cycle(keys)):
+                                         cycle(enumerate(self.keys))):
             sample = self.dataset[self.current]
             if hasattr(sample, key) and getattr(sample, key) is not None:
                 data = np.squeeze(getattr(sample, key))
@@ -90,5 +99,5 @@ class Dataviewer:
 if __name__ == '__main__':
     import data
 
-    DataBrowser(data.mixed(samples=16))
+    Dataviewer(data.mixed(samples=16))
     plt.show()
