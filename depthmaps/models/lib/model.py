@@ -31,7 +31,7 @@ class Model:
                                        shapes, batchsize=self.batchsize,
                                        workers=workers)
         self.test_dataflow = Dataflow(self.session, self.dataset.test_files,
-                                      shapes, len(self.dataset.test_files),
+                                      shapes, batchsize=self.batchsize,
                                       workers=1)
 
         # Convert all images to float values from 0 to 1.
@@ -87,7 +87,17 @@ class Model:
             worker.join()
 
     def evaluate(self):
-        data, outputs = self.session.run([self.test_dataflow.out,
-                                          self.test_net.output])
-        inputs, targets = data
+        """Evaluate the model.
+
+        Still passes the data through the model in the specified batchsize
+        in order to prevent out of memory errors. Basically performs a whole
+        epoch of feed forward steps and collects the results.
+        """
+        inputs, targets, outputs = [], [], []
+        for _ in range(len(self.dataset.test_files) // self.batchsize):
+            data, output = self.session.run([self.test_dataflow.out,
+                                             self.test_net.output])
+            inputs.extend(data[0])
+            targets.extend(data[1])
+            outputs.extend(output)
         return list(zip(inputs, targets, outputs))

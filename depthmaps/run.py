@@ -14,5 +14,5 @@ model.train(epochs=10)
 
 results = model.evaluate()
 Dataviewer(results, name='Results', keys=['image', 'depth', 'result'],
-           cmaps={'depth': 'jet', 'result': 'jet'})
+           cmaps={'depth': 'gray', 'result': 'gray'})
 plt.show(True)
