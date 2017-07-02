@@ -82,8 +82,7 @@ class Model:
                 break
 
             if task == 'save':
-                self.saver.save(self.session, type(self).__name__,
-                                global_step=epoch)
+                self.saver.save(self.session, self.logdir, global_step=epoch)
             elif task == 'done':
                 print('Epoch {} done.'.format(epoch))
             elif task == 'eval':
