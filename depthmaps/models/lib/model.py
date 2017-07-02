@@ -20,7 +20,7 @@ class Model:
     target_shape = (0, 0, 0)
     batchsize = 32
 
-    def __init__(self, dataset, workers=1):
+    def __init__(self, dataset, workers=1, checkpoint=None):
         self.dataset = dataset
         self.session = tf.Session()
 
@@ -49,7 +49,12 @@ class Model:
         self.train_net = build_network(train_inputs, train_targets)
         self.test_net = build_network(test_inputs, test_targets)
 
-        self.session.run(tf.global_variables_initializer())
+        self.saver = tf.train.Saver(max_to_keep=1,
+                                    keep_checkpoint_every_n_hours=1)
+        if checkpoint is not None:
+            self.saver.restore(checkpoint)
+        else:
+            self.session.run(tf.global_variables_initializer())
 
         self.train_queue = Queue(len(self.dataset.train_files))
         self.workers = [Thread(target=self.train_worker, daemon=True)
@@ -60,14 +65,17 @@ class Model:
         raise NotImplementedError
 
     def train_worker(self):
-        """Train until no more training steps are queued."""
+        """Work through the train queue and perform the specified task."""
         while True:
             try:
                 epoch, task = self.train_queue.get(timeout=2)
             except Empty:
                 break
 
-            if task == 'done':
+            if task == 'save':
+                self.saver.save(self.session, type(self).__name__,
+                                global_step=epoch)
+            elif task == 'done':
                 print('Epoch {} done.'.format(epoch))
             elif task == 'eval':
                 loss = self.session.run(self.test_net.loss)
@@ -80,7 +88,8 @@ class Model:
             else:
                 self.session.run(self.train_net.train, {self.training: True})
 
-    def train(self, epochs=1, test_frequency=1, test_on_testset=False):
+    def train(self, epochs=1, test_frequency=1, test_on_testset=False,
+              save_frequency=10):
         """Train the model."""
         # Start workers.
         for worker in self.workers:
@@ -97,6 +106,8 @@ class Model:
                     self.train_queue.put((epoch, 'verbose'))
             elif test_frequency <= 0:
                 self.train_queue.put((epoch, 'done'))
+            if not epoch % save_frequency:
+                self.train_queue.put((epoch, 'save'))
 
         # Wait for all workers to be done.
         for worker in self.workers:
