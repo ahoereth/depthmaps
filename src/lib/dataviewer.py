@@ -73,6 +73,7 @@ class Dataviewer:
             img.set_data(data)
             axes.set_xlim([0, data.shape[1]])
             axes.set_ylim([data.shape[0], 0])
+            axes.set_title(key, fontsize=8)
 
             if key == self.keys[-1]:
                 self.current = (self.current + 1) % len(self.dataset)
