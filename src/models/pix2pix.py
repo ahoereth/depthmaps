@@ -24,13 +24,13 @@ class Pix2Pix(Model):
 
     @staticmethod
     def conv2d(inputs, num_outputs, kernel_size=(4, 4), strides=2,
-               padding='SAME', activation=lrelu, norm=False, training=False):
+               padding='SAME', activation=lrelu, norm=None):
         """Wrapper for tf.layers.conv2d with default parameters."""
         net = tf.layers.conv2d(inputs, num_outputs, kernel_size, strides,
-                               padding=padding)
-        if norm:
+                               padding=padding, activation=activation)
+        if norm is not None:
             net = tf.layers.batch_normalization(net, training=training)
-        return activation(net)
+        return net  # activation(net)
 
     @staticmethod
     def conv2d_transpose(inputs, num_outputs, kernel_size=(4, 4), strides=2,
