@@ -1,11 +1,10 @@
-"""Implementation of Eigen et al 2014.
+"""Implementation of Isola et al 2014.
 
-@inproceedings{Eigen2014,
-  title = {Depth map prediction from a single image using a multi-scale deep network},
-  author = {Eigen, David and Puhrsch, Christian and Fergus, Rob},
-  booktitle = {Advances in neural information processing systems},
-  pages = {2366--2374},
-  year = {2014}
+@article{Isola2016,
+  title = {Image-to-image translation with conditional adversarial networks},
+  author = {Isola, Phillip and Zhu, Jun-Yan and Zhou, Tinghui and Efros, Alexei A},
+  journal = {arXiv preprint arXiv:1611.07004},
+  year = {2016}
 }
 """
 import tensorflow as tf
@@ -77,7 +76,8 @@ class Pix2Pix(Model):
         Args:
             images: Input images, either from generator or ground truths.
                 Shape (BATCH, 256, 256, input_c)
-            training: True when in training, False when in testing step.
+            training (tf.Tensor): True when in training,
+                                  False when in testing step.
 
         Returns:
             (tf.Tensor): Tanh network output, single channel shaped as input.
