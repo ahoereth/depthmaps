@@ -9,7 +9,6 @@
 }
 """
 import tensorflow as tf
-from tensorflow.contrib.framework import get_variables
 
 from .lib import Model, Network, lrelu, soft_labels_like
 
@@ -36,14 +35,14 @@ class Pix2Pix(Model):
 
     @staticmethod
     def conv2d_transpose(inputs, num_outputs, kernel_size=(4, 4), strides=2,
-                         padding='SAME', activation=tf.nn.relu, norm=False,
-                         training=False):
+                         padding='SAME', activation=tf.nn.relu, norm=None):
         """Wrapper for tf.layers.conv2d_transpose with default parameters."""
         net = tf.layers.conv2d_transpose(inputs, num_outputs, kernel_size,
-                                         strides, padding=padding)
-        if norm:
-            net = tf.layers.batch_normalization(net, training=training)
-        return activation(net)
+                                         strides, padding=padding,
+                                         activation=activation)
+        if norm is not None:
+            net = tf.layers.batch_normalization(net, training=norm)
+        return net  # activation(net)
 
     @classmethod
     def make_discriminator(cls, images, training):
@@ -61,14 +60,14 @@ class Pix2Pix(Model):
         """
         with tf.variable_scope('discriminator') as scope:
             net = cls.conv2d(images, 64)
-            net = cls.conv2d(net, 128, norm=True, training=training)
-            net = cls.conv2d(net, 256, norm=True, training=training)
-            net = cls.conv2d(net, 512, norm=True, training=training)
+            net = cls.conv2d(net, 128, norm=training)
+            net = cls.conv2d(net, 256, norm=training)
+            net = cls.conv2d(net, 512, norm=training)
             net = cls.conv2d(net, 1, (1, 1))
             logits = tf.layers.dense(net, 1, tf.identity)
             # out = tf.nn.sigmoid(logits)
-        theta = get_variables(scope)
-        ops = get_variables(scope, collection=tf.GraphKeys.UPDATE_OPS)
+            theta = scope.trainable_variables()
+            ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
         return logits, theta, ops  # NOTE: No output returned
 
     @classmethod
@@ -88,52 +87,37 @@ class Pix2Pix(Model):
             with tf.variable_scope('encoder'):  # 256x256
                 net = images
                 enc0 = cls.conv2d(net, 64)  # 128x128
-                enc1 = cls.conv2d(enc0, 128, norm=True,
-                                  training=training)  # 64x64
-                enc2 = cls.conv2d(enc1, 256, norm=True,
-                                  training=training)  # 32x32
-                enc3 = cls.conv2d(enc2, 512, norm=True,
-                                  training=training)  # 16x16
-                enc4 = cls.conv2d(enc3, 512, norm=True,
-                                  training=training)  # 8x8
-                enc5 = cls.conv2d(enc4, 512, norm=True,
-                                  training=training)  # 4x4
-                enc6 = cls.conv2d(enc5, 512, norm=True,
-                                  training=training)  # 2x2x512
-                enc7 = cls.conv2d(enc6, 512, norm=True,
-                                  training=training)  # 1x1x512
+                enc1 = cls.conv2d(enc0, 128, norm=training)  # 64x64
+                enc2 = cls.conv2d(enc1, 256, norm=training)  # 32x32
+                enc3 = cls.conv2d(enc2, 512, norm=training)  # 16x16
+                enc4 = cls.conv2d(enc3, 512, norm=training)  # 8x8
+                enc5 = cls.conv2d(enc4, 512, norm=training)  # 4x4
+                enc6 = cls.conv2d(enc5, 512, norm=training)  # 2x2x512
+                enc7 = cls.conv2d(enc6, 512, norm=training)  # 1x1x512
             with tf.variable_scope('decoder'):
-                dec = cls.conv2d_transpose(enc7, 512, norm=True,
-                                           training=training)  # 2x2
+                dec = cls.conv2d_transpose(enc7, 512, norm=training)  # 2x2
                 dec = tf.layers.dropout(dec, .5)  # 512
                 dec = tf.concat([dec, enc6], axis=-1)  # 1024
-                dec = cls.conv2d_transpose(dec, 512, norm=True,
-                                           training=training)  # 4x4
+                dec = cls.conv2d_transpose(dec, 512, norm=training)  # 4x4
                 dec = tf.layers.dropout(dec, .5)
                 dec = tf.concat([dec, enc5], axis=-1)  # 1024
-                dec = cls.conv2d_transpose(dec, 512, norm=True,
-                                           training=training)  # 8x8
+                dec = cls.conv2d_transpose(dec, 512, norm=training)  # 8x8
                 dec = tf.layers.dropout(dec, .5)
                 dec = tf.concat([dec, enc4], axis=-1)  # 1024
-                dec = cls.conv2d_transpose(dec, 512, norm=True,
-                                           training=training)  # 16x16
+                dec = cls.conv2d_transpose(dec, 512, norm=training)  # 16x16
                 dec = tf.concat([dec, enc3], axis=-1)  # 1024
                 # dec = conv2d_transpose(dec, 512, norm=True,
                 #                        training=training)
-                dec = cls.conv2d_transpose(dec, 256, norm=True,
-                                           training=training)  # 32x32
+                dec = cls.conv2d_transpose(dec, 256, norm=training)  # 32x32
                 dec = tf.concat([dec, enc2], axis=-1)  # 512
-                dec = cls.conv2d_transpose(dec, 128, norm=True,
-                                           training=training)  # 64x64
+                dec = cls.conv2d_transpose(dec, 128, norm=training)  # 64x64
                 dec = tf.concat([dec, enc1], axis=-1)  # 256
-                dec = cls.conv2d_transpose(dec, 64,
-                                           norm=True,
-                                           training=training)  # 128x128
+                dec = cls.conv2d_transpose(dec, 64, norm=training)  # 128x128
                 dec = tf.concat([dec, enc0], axis=-1)  # 128
                 out = cls.conv2d_transpose(dec, 1,
                                            activation=tf.nn.tanh)  # 256x256
-            theta = get_variables(scope)
-            ops = get_variables(scope, collection=tf.GraphKeys.UPDATE_OPS)
+                theta = scope.trainable_variables()
+                ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
             return out, theta, ops
 
     def build_network(self, inputs, targets, training=False):
@@ -163,8 +147,8 @@ class Pix2Pix(Model):
             l1loss = tf.reduce_mean(tf.abs(targets - generator))
             loss = ganloss + self.LAMBDA * l1loss
             ema_op = g_ema.apply(loss)
+            optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
             with tf.control_dependencies(g_ops + [ema_op]):
-                optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
                 train_op = optimizer.minimize(loss, var_list=g_theta,
                                               global_step=self.step)
             return train_op
@@ -178,8 +162,8 @@ class Pix2Pix(Model):
                                                             labels=labels_)
             loss = tf.reduce_mean(loss) + tf.reduce_mean(loss_)
             ema_op = d_ema.apply(loss)
+            optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
             with tf.control_dependencies(d_ops + [ema_op]):
-                optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
                 train_op = optimizer.minimize(loss, var_list=d_theta,
                                               global_step=self.step)
             return train_op
