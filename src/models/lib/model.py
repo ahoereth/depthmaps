@@ -52,7 +52,7 @@ class Model:
         self.train_net = build_network(train_inputs, train_targets)
         self.test_net = build_network(test_inputs, test_targets)
 
-        # Save the model regularily and maybe restore a saved model.
+        # Save the model regularly and maybe restore a saved model.
         self.saver = tf.train.Saver(max_to_keep=1,
                                     keep_checkpoint_every_n_hours=1)
         if checkpoint is not None:
