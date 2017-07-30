@@ -121,8 +121,11 @@ class Pix2Pix(Model):
 
     def build_network(self, inputs, targets, training=False):
         """Create a generative adversarial image generation network."""
+        inputs = inputs * 2 - 1  # scale from -1 to 1
+
         # Create generator -- also acts as the sample.
         generator, g_theta, g_ops = self.make_generator(inputs, training)
+        outputs = (generator + 1) / 2  # scale from 0 to 1
 
         # Create the two discriminator graphs, once with the ground truths
         # and once the generated depth maps as inputs.
@@ -162,4 +165,4 @@ class Pix2Pix(Model):
 
         # Run train operations alternating.
         train = tf.cond(self.step % 2, train_generator, train_discriminator)
-        return Network(generator, train, (d_ema, g_ema))
+        return Network(outputs, train, (d_ema, g_ema))
