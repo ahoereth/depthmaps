@@ -61,16 +61,14 @@ class Pix2Pix(Model):
             (List[tf.Operation]): Batch normalization update operations.
         """
         with tf.variable_scope('discriminator') as scope:
-            net = cls.conv2d(images, 64)
-            net = cls.conv2d(net, 128, norm=training)
-            net = cls.conv2d(net, 256, norm=training)
-            net = cls.conv2d(net, 512, norm=training)
-            net = cls.conv2d(net, 1, (1, 1))
-            logits = tf.layers.dense(net, 1, tf.identity)
-            # out = tf.nn.sigmoid(logits)
+            net = cls.conv2d(images, 64)  # 128x128
+            net = cls.conv2d(net, 128, norm=training)  # 64x64
+            net = cls.conv2d(net, 256, norm=training)  # 32x32
+            net = cls.conv2d(net, 512, (1, 1), norm=training)  # 31x31
+            net = cls.conv2d(net, 1, (1, 1), activation=tf.nn.sigmoid)  # 30x30
             theta = scope.trainable_variables()
             ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
-        return logits, theta, ops  # NOTE: No output returned
+        return net, theta, ops
 
     @classmethod
     def make_generator(cls, images, training):
@@ -109,8 +107,6 @@ class Pix2Pix(Model):
                 dec = tf.concat([dec, enc4], axis=-1)  # 1024
                 dec = cls.conv2d_transpose(dec, 512, norm=training)  # 16x16
                 dec = tf.concat([dec, enc3], axis=-1)  # 1024
-                # dec = conv2d_transpose(dec, 512, norm=True,
-                #                        training=training)
                 dec = cls.conv2d_transpose(dec, 256, norm=training)  # 32x32
                 dec = tf.concat([dec, enc2], axis=-1)  # 512
                 dec = cls.conv2d_transpose(dec, 128, norm=training)  # 64x64
@@ -135,20 +131,17 @@ class Pix2Pix(Model):
         remake_discriminator = tf.make_template('discriminator',
                                                 self.make_discriminator,
                                                 training=training)
-        d_logits, d_theta, d_ops = remake_discriminator(real)
-        d_logits_, _, _ = remake_discriminator(fake)
+        d_real, d_theta, d_ops = remake_discriminator(real)
+        d_fake, _, _ = remake_discriminator(fake)  # uses the same variables
 
         # Keep moving averages of losses.
         d_ema = tf.train.ExponentialMovingAverage(decay=0.9999)
         g_ema = tf.train.ExponentialMovingAverage(decay=0.9999)
 
         def train_generator():
-            labels = soft_labels_like(d_logits_, True)
-            ganloss = tf.nn.sigmoid_cross_entropy_with_logits(logits=d_logits_,
-                                                              labels=labels)
-            ganloss = tf.reduce_mean(ganloss)
-            l1loss = tf.reduce_mean(tf.abs(targets - generator))
-            loss = ganloss + self.LAMBDA * l1loss
+            loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12))
+            loss_l1 = tf.reduce_mean(tf.abs(targets - generator))
+            loss = loss_gan + self.LAMBDA * loss_l1
             ema_op = g_ema.apply(loss)
             optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
             with tf.control_dependencies(g_ops + [ema_op]):
@@ -157,13 +150,9 @@ class Pix2Pix(Model):
             return train_op
 
         def train_discriminator():
-            labels = soft_labels_like(d_logits, True)
-            loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=d_logits,
-                                                           labels=labels)
-            labels_ = soft_labels_like(d_logits_, False)
-            loss_ = tf.nn.sigmoid_cross_entropy_with_logits(logits=d_logits_,
-                                                            labels=labels_)
-            loss = tf.reduce_mean(loss) + tf.reduce_mean(loss_)
+            loss_real = tf.log(d_real + 1e-12)
+            loss_fake = tf.log(1 - d_fake + 1e-12)
+            loss = tf.reduce_mean(-(loss_real + loss_fake))
             ema_op = d_ema.apply(loss)
             optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
             with tf.control_dependencies(d_ops + [ema_op]):
