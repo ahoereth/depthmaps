@@ -26,22 +26,25 @@ class Pix2Pix(Model):
     def conv2d(inputs, num_outputs, kernel_size=(4, 4), strides=2,
                padding='SAME', activation=lrelu, norm=None):
         """Wrapper for tf.layers.conv2d with default parameters."""
+        init = tf.random_normal_initializer(0, 0.02)
         net = tf.layers.conv2d(inputs, num_outputs, kernel_size, strides,
-                               padding=padding, activation=activation)
+                               padding=padding,
+                               kernel_initializer=init)
         if norm is not None:
-            net = tf.layers.batch_normalization(net, training=training)
-        return net  # activation(net)
+            net = tf.layers.batch_normalization(net, training=norm)
+        return activation(net)
 
     @staticmethod
     def conv2d_transpose(inputs, num_outputs, kernel_size=(4, 4), strides=2,
                          padding='SAME', activation=tf.nn.relu, norm=None):
         """Wrapper for tf.layers.conv2d_transpose with default parameters."""
+        init = tf.random_normal_initializer(0, 0.02)
         net = tf.layers.conv2d_transpose(inputs, num_outputs, kernel_size,
                                          strides, padding=padding,
-                                         activation=activation)
+                                         kernel_initializer=init)
         if norm is not None:
             net = tf.layers.batch_normalization(net, training=norm)
-        return net  # activation(net)
+        return activation(net)
 
     @classmethod
     def make_discriminator(cls, images, training):
