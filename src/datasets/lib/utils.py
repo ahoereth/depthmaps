@@ -23,7 +23,7 @@ def maybe_download(target: str, url: str, *, force=False):
 
     didntexist = not target_path.exists()
     if didntexist or force:
-        os.makedirs(target_dir, exist_ok=True)
+        os.makedirs(str(target_dir), exist_ok=True)
         print('Fetching `{}`...'.format(target_path))
         try:
             request.urlretrieve(url, str(target_path), progress)
@@ -43,9 +43,9 @@ def maybe_extract(filename, target_dir=None, targets=False, *, force=False):
 
     didntexist = not target_dir.exists()
     if didntexist or force:
-        os.makedirs(target_dir, exist_ok=True)
-        with tarfile.open(file) as tar:
-            tar.extractall(target_dir)
+        os.makedirs(str(target_dir), exist_ok=True)
+        with tarfile.open(str(file)) as tar:
+            tar.extractall(str(target_dir))
     else:
         print('`{}` already exists.'.format(target_dir))
 

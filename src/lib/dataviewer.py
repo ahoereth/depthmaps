@@ -6,8 +6,11 @@ https://github.com/shoeffner/ann3depth/blob/master/src/visualize/dataviewer.py
 from itertools import cycle
 
 import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib import image
+try:
+    from matplotlib import pyplot as plt
+    from matplotlib import image
+except ImportError:
+    pass
 
 
 class Dataviewer:
@@ -78,7 +81,8 @@ class Dataviewer:
             if key == self.keys[-1]:
                 self.current = (self.current + 1) % len(self.dataset)
 
-        self.figure.suptitle(f'Showing samples {first} to {self.current - 1}')
+        self.figure.suptitle('Showing samples {} to {}'
+                             .format(first, self.current - 1))
         self.figure.canvas.draw()
 
     def __key_press_event(self, event):
@@ -94,7 +98,7 @@ class Dataviewer:
         try:
             events[event.key](event)
         except KeyError:
-            print(f'Key pressed but no action available: {event.key}')
+            print('Key pressed but no action available: {}'.format(event.key))
 
 
 if __name__ == '__main__':

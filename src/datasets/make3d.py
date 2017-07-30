@@ -63,7 +63,7 @@ class Make3D(Dataset):
                     name = path.name.split('img-')[1]
                     target = (path.parent / name).with_suffix('.image.jpg')
                     img.save(target, 'JPEG')
-                os.remove(path)
+                os.remove(str(path))
         elif name.endswith('targets'):
             for path in glob(str(directory / '**/*.mat'), recursive=True):
                 try:
@@ -76,4 +76,4 @@ class Make3D(Dataset):
                     name = path.name.split('depth_sph_corr-')[1]
                     target = (path.parent / name).with_suffix('.depth.jpg')
                     img.save(target, 'JPEG')
-                os.remove(path)
+                os.remove(str(path))
