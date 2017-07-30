@@ -2,9 +2,12 @@
 import tensorflow as tf
 
 
-def lrelu(x, alpha=0.2):
+def lrelu(x, alpha=0.2, name='lrelu'):
     """Leaky rectifier."""
-    return tf.maximum(alpha * x, x)
+    with tf.variable_scope(name):
+        f1 = 0.5 * (1 + alpha)
+        f2 = 0.5 * (1 - alpha)
+        return f1 * x + f2 * tf.abs(x)
 
 
 def soft_labels_like(like, value: bool):
