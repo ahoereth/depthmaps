@@ -137,32 +137,36 @@ class Pix2Pix(Model):
         d_real, d_theta, d_ops = remake_discriminator(real)
         d_fake, _, _ = remake_discriminator(fake)  # uses the same variables
 
-        # Keep moving averages of losses.
-        d_ema = tf.train.ExponentialMovingAverage(decay=0.9999)
-        g_ema = tf.train.ExponentialMovingAverage(decay=0.9999)
+        with tf.variable_scope('GeneratorLoss'):
+            g_loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12))
+            g_loss_l1 = tf.reduce_mean(tf.abs(targets - generator))
+            g_loss = g_loss_gan + self.LAMBDA * g_loss_l1
+            g_ema = tf.train.ExponentialMovingAverage(decay=0.999)
+            g_ema_op = g_ema.apply([g_loss])
+
+        with tf.variable_scope('DiscriminatorLoss'):
+            d_loss_real = tf.log(d_real + 1e-12)
+            d_loss_fake = tf.log(1 - d_fake + 1e-12)
+            d_loss = tf.reduce_mean(-(d_loss_real + d_loss_fake))
+            d_ema = tf.train.ExponentialMovingAverage(decay=0.999)
+            d_ema_op = d_ema.apply([d_loss])
 
         def train_generator():
-            loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12))
-            loss_l1 = tf.reduce_mean(tf.abs(targets - generator))
-            loss = loss_gan + self.LAMBDA * loss_l1
-            ema_op = g_ema.apply(loss)
             optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
-            with tf.control_dependencies(g_ops + [ema_op]):
-                train_op = optimizer.minimize(loss, var_list=g_theta,
+            with tf.control_dependencies(g_ops + [g_ema_op]):
+                train_op = optimizer.minimize(d_loss, var_list=g_theta,
                                               global_step=self.step)
             return train_op
 
         def train_discriminator():
-            loss_real = tf.log(d_real + 1e-12)
-            loss_fake = tf.log(1 - d_fake + 1e-12)
-            loss = tf.reduce_mean(-(loss_real + loss_fake))
-            ema_op = d_ema.apply(loss)
             optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
-            with tf.control_dependencies(d_ops + [ema_op]):
-                train_op = optimizer.minimize(loss, var_list=d_theta,
+            with tf.control_dependencies(d_ops + [d_ema_op]):
+                train_op = optimizer.minimize(d_loss, var_list=d_theta,
                                               global_step=self.step)
             return train_op
 
         # Run train operations alternating.
-        train = tf.cond(self.step % 2, train_generator, train_discriminator)
+        train = tf.cond(tf.cast(self.step % 2, tf.bool),
+                        train_generator,
+                        train_discriminator)
         return Network(outputs, train, (d_ema, g_ema))
