@@ -21,3 +21,13 @@ def soft_labels_like(like, value: bool):
 def to_float(images):
     """Convert uint8 images to float and scale them from -1 to 1."""
     return (tf.image.convert_image_dtype(images, tf.float32) - .5) * 2
+
+
+def to_tuple(*args):
+    result = []
+    for arg in args:
+        try:
+            result.extend(arg)
+        except TypeError:
+            result.extend((arg,))
+    return tuple(result)

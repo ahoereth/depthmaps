@@ -27,6 +27,7 @@ def maybe_download(target: str, url: str, *, force=False):
         print('Fetching `{}`...'.format(target_path))
         try:
             request.urlretrieve(url, str(target_path), progress)
+            print("")
         except HTTPError:
             print('Failed to download `{}`.'.format(url))
     else:

@@ -7,7 +7,7 @@ from threading import Thread
 
 import tensorflow as tf
 
-from .utils import to_float
+from .utils import to_float, to_tuple
 from .dataflow import Dataflow
 
 
@@ -47,10 +47,16 @@ class Model:
 
         # To handle the train and test split there are two networks which
         # share variables. This allows us to use them independently.
-        build_network = tf.make_template('network', self.build_network,
-                                         training=self.training)
-        self.train_net = build_network(train_inputs, train_targets)
-        self.test_net = build_network(test_inputs, test_targets)
+        self.train_net = self.build_network(train_inputs, train_targets,
+                                            training=self.training)
+        self.test_net = self.build_network(test_inputs, test_targets,
+                                           training=self.training, reuse=True)
+
+        # Keep moving averages for the loss.
+        # train_ema = tf.train.ExponentialMovingAverage(decay=0.999)
+        # test_ema = tf.train.ExponentialMovingAverage(decay=0.999)
+        # train_ema_op = train_ema.apply(to_tuple(self.train_net.loss))
+        # test_ema_op = test_ema.apply(to_tuple(self.test_net.loss))
 
         # Save the model regularly and maybe restore a saved model.
         self.saver = tf.train.Saver(max_to_keep=1,
@@ -62,14 +68,14 @@ class Model:
 
         # Store summaries for tensorboard.
         self.summaries = tf.summary.merge_all()
-        self.writer = tf.summary.FileWriter(Path('logs') / self.logdir,
+        self.writer = tf.summary.FileWriter(str(Path('logs') / self.logdir),
                                             self.session.graph)
 
         self.train_queue = Queue(len(self.dataset.train_files))
         self.workers = [Thread(target=self.train_worker, daemon=True)
                         for _ in range(workers)]
 
-    def build_network(self, inputs, targets):
+    def build_network(self, inputs, targets, reuse=None):
         """Create the neural network."""
         raise NotImplementedError
 
@@ -82,17 +88,20 @@ class Model:
                 break
 
             if task == 'save':
-                self.saver.save(self.session, self.logdir, global_step=epoch)
+                step = self.session.run(self.step)
+                self.saver.save(self.session, str(self.logdir), step)
             elif task == 'done':
                 print('Epoch {} done.'.format(epoch))
             elif task == 'eval':
                 loss = self.session.run(self.test_net.loss)
-                print('Epoch {} with test loss {:.5f}.'.format(epoch, loss))
+                print('eval', loss)
+                # print('Epoch {} with test loss {:.5f}.'.format(epoch, loss))
             elif task == 'verbose':
                 _, loss = self.session.run(
                     [self.train_net.train, self.train_net.loss],
                     {self.training: True})
-                print('Epoch {} with train loss {:.5f}.'.format(epoch, loss))
+                print('verbose', loss)
+                # print('Epoch {} with train loss {:.5f}.'.format(epoch, loss))
             elif task == 'train+save':
                 summary, _ = self.session.run(
                     [self.summaries, self.train_net.train],

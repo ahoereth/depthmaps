@@ -47,7 +47,7 @@ class Pix2Pix(Model):
         return activation(net)
 
     @classmethod
-    def make_discriminator(cls, images, training):
+    def make_discriminator(cls, images, training, reuse=None):
         """Discriminator.
 
         Args:
@@ -60,7 +60,7 @@ class Pix2Pix(Model):
             (tf.Tensor): Linear network output, single scalar.
             (List[tf.Operation]): Batch normalization update operations.
         """
-        with tf.variable_scope('discriminator') as scope:
+        with tf.variable_scope('discriminator', reuse=reuse) as scope:
             net = cls.conv2d(images, 64)  # 128x128
             net = cls.conv2d(net, 128, norm=training)  # 64x64
             net = cls.conv2d(net, 256, norm=training)  # 32x32
@@ -71,7 +71,7 @@ class Pix2Pix(Model):
         return net, theta, ops
 
     @classmethod
-    def make_generator(cls, images, training):
+    def make_generator(cls, images, training, reuse=None):
         """Generator.
 
         Args:
@@ -84,7 +84,7 @@ class Pix2Pix(Model):
             (tf.Tensor): Tanh network output, single channel shaped as input.
             (List[tf.Operation]): Batch normalization update operations.
         """
-        with tf.variable_scope('generator') as scope:
+        with tf.variable_scope('generator', reuse=reuse) as scope:
             with tf.variable_scope('encoder'):  # 256x256
                 net = images
                 enc0 = cls.conv2d(net, 64)  # 128x128
@@ -119,48 +119,51 @@ class Pix2Pix(Model):
                 ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
             return out, theta, ops
 
-    def build_network(self, inputs, targets, training=False):
+    def build_network(self, inputs, targets, training=False, reuse=None):
         """Create a generative adversarial image generation network."""
         inputs = inputs * 2 - 1  # scale from -1 to 1
 
         # Create generator -- also acts as the sample.
-        generator, g_theta, g_ops = self.make_generator(inputs, training)
+        generator, g_theta, g_ops = self.make_generator(inputs, training,
+                                                        reuse=reuse)
+        tf.contrib.layers.summarize_tensors(g_ops)
         outputs = (generator + 1) / 2  # scale from 0 to 1
 
         # Create the two discriminator graphs, once with the ground truths
         # and once the generated depth maps as inputs.
         real = tf.concat([inputs, targets], axis=-1)
         fake = tf.concat([inputs, generator], axis=-1)
-        remake_discriminator = tf.make_template('discriminator',
-                                                self.make_discriminator,
-                                                training=training)
-        d_real, d_theta, d_ops = remake_discriminator(real)
-        d_fake, _, _ = remake_discriminator(fake)  # uses the same variables
+        d_real, d_theta, d_ops = self.make_discriminator(real,
+                                                         training=training,
+                                                         reuse=reuse)
+        d_fake, _, _ = self.make_discriminator(fake, training=training,
+                                               reuse=True)
+        tf.contrib.layers.summarize_tensors(d_ops)
 
         with tf.variable_scope('GeneratorLoss'):
             g_loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12))
             g_loss_l1 = tf.reduce_mean(tf.abs(targets - generator))
             g_loss = g_loss_gan + self.LAMBDA * g_loss_l1
-            g_ema = tf.train.ExponentialMovingAverage(decay=0.999)
-            g_ema_op = g_ema.apply([g_loss])
 
         with tf.variable_scope('DiscriminatorLoss'):
             d_loss_real = tf.log(d_real + 1e-12)
             d_loss_fake = tf.log(1 - d_fake + 1e-12)
             d_loss = tf.reduce_mean(-(d_loss_real + d_loss_fake))
-            d_ema = tf.train.ExponentialMovingAverage(decay=0.999)
-            d_ema_op = d_ema.apply([d_loss])
+
+        # Only run the training logic for the original train network.
+        if reuse is not None:
+            return Network(outputs, None, None)
 
         def train_generator():
             optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
-            with tf.control_dependencies(g_ops + [g_ema_op]):
+            with tf.control_dependencies(g_ops):
                 train_op = optimizer.minimize(d_loss, var_list=g_theta,
                                               global_step=self.step)
             return train_op
 
         def train_discriminator():
             optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
-            with tf.control_dependencies(d_ops + [d_ema_op]):
+            with tf.control_dependencies(d_ops):
                 train_op = optimizer.minimize(d_loss, var_list=d_theta,
                                               global_step=self.step)
             return train_op
@@ -169,4 +172,4 @@ class Pix2Pix(Model):
         train = tf.cond(tf.cast(self.step % 2, tf.bool),
                         train_generator,
                         train_discriminator)
-        return Network(outputs, train, (d_ema, g_ema))
+        return Network(outputs, train, [d_loss, g_loss])
