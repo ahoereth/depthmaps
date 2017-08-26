@@ -34,16 +34,11 @@ class Model:
 
         # Create two dataflows, one for the train and one for test split.
         shapes = (self.input_shape, self.target_shape)
-        self.train_dataflow = Dataflow(self.session, self.dataset.train_files,
-                                       shapes, batchsize=self.batchsize,
-                                       workers=workers)
-        self.test_dataflow = Dataflow(self.session, self.dataset.test_files,
-                                      shapes, batchsize=self.batchsize,
-                                      workers=1)
+        self.train_dataflow = Dataflow(self.dataset.train_files, shapes)
+        self.test_dataflow = Dataflow(self.dataset.test_files, shapes)
 
-        # Convert all images to float values from 0 to 1.
-        train_inputs, train_targets = map(to_float, self.train_dataflow.out)
-        test_inputs, test_targets = map(to_float, self.test_dataflow.out)
+        train_inputs, train_targets = self.train_dataflow.get(self.batchsize)
+        test_inputs, test_targets = self.test_dataflow.get(self.batchsize)
 
         # To handle the train and test split there are two networks which
         # share variables. This allows us to use them independently.
