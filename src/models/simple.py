@@ -8,9 +8,6 @@ class Simple(Model):
     target_shape = (47, 31, 1)
     batchsize = 32
 
-    def __init__(self, *args, **kwargs):
-        super(Simple, self).__init__(*args, **kwargs)
-
     def build_network(self, inputs, targets, training=False):
         """Build a simple fully convolutional model."""
         net = tf.layers.conv2d(inputs, 16, 16, 2, activation=tf.nn.relu)

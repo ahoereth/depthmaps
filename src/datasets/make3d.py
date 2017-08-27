@@ -31,23 +31,20 @@ FILES = {
 
 
 class Make3D(Dataset):
+    directory = DATA_DIR / 'make3d'
     input_shape = (480, 320)
     target_shape = (55 * 480 // 320, 55)
     # input_shape = (2272, 1704)
     # target_shape = (55, 305)
 
     def __init__(self, cleanup_on_exit=False):
-        super(Make3D, self).__init__(cleanup_on_exit=cleanup_on_exit)
-        directory = DATA_DIR / 'make3d'
         for name, url in FILES.items():
-            archive, _ = maybe_download(directory, url)
+            archive, _ = maybe_download(self.directory, url)
             target_dir, extracted = maybe_extract(archive)
             self._tempdirs.append(target_dir)
             if extracted:
                 self._preprocess_data(name, target_dir)
-
-        # Create train/test split.
-        self._split(directory)
+        super(Make3D, self).__init__(cleanup_on_exit=cleanup_on_exit)
 
     def _preprocess_data(self, name, directory):
         """Preprocess a part of the 4 way split dataset."""

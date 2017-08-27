@@ -1,7 +1,2 @@
-from pathlib import Path
-
-from .dataset import Dataset
+from .dataset import Dataset, DATA_DIR
 from .utils import maybe_extract, maybe_download
-
-
-DATA_DIR = Path.cwd() / 'tmp'

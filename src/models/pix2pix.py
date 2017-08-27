@@ -19,9 +19,6 @@ class Pix2Pix(Model):
     target_shape = (256, 256, 1)
     batchsize = 1
 
-    def __init__(self, *args, **kwargs):
-        super(Pix2Pix, self).__init__(*args, **kwargs)
-
     @staticmethod
     def conv2d(inputs, num_outputs, kernel_size=(4, 4), strides=2,
                padding='SAME', activation=lrelu, norm=None):

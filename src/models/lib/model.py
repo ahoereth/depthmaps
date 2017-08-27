@@ -2,13 +2,10 @@
 from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
-from queue import Queue, Empty
-from threading import Thread
 
 import tensorflow as tf
 
-from .utils import to_float, to_tuple
-from .dataflow import Dataflow
+from .utils import to_float
 
 
 Network = namedtuple('Network', ('output', 'train', 'loss'))
@@ -20,7 +17,7 @@ class Model:
     target_shape = (0, 0, 0)
     batchsize = 32
 
-    def __init__(self, dataset, workers=1, checkpoint=None):
+    def __init__(self, dataset, checkpoint=None):
         time = datetime.now().strftime('%y%m%d-%H%M')
         self.logdir = Path('logs') / type(self).__name__ / time
 
@@ -32,19 +29,19 @@ class Model:
 
         self.training = tf.placeholder_with_default(False, None)
 
-        # Create two dataflows, one for the train and one for test split.
-        shapes = (self.input_shape, self.target_shape)
-        self.train_dataflow = Dataflow(self.dataset.train_files, shapes)
-        self.test_dataflow = Dataflow(self.dataset.test_files, shapes)
-
-        train_inputs, train_targets = self.train_dataflow.get(self.batchsize)
-        test_inputs, test_targets = self.test_dataflow.get(self.batchsize)
+        # Resize and scale the test and train data, provide iterators.
+        testdata = dataset.test.map(self._preprocess).batch(self.batchsize)
+        traindata = dataset.train.map(self._preprocess).batch(self.batchsize)
+        self.test_iter = testdata.make_initializable_iterator()
+        self.train_iter = traindata.make_initializable_iterator()
+        self.test_inputs, self.test_targets = self.test_iter.get_next()
+        train_inputs, train_targets = self.train_iter.get_next()
 
         # To handle the train and test split there are two networks which
         # share variables. This allows us to use them independently.
         self.train_net = self.build_network(train_inputs, train_targets,
                                             training=self.training)
-        self.test_net = self.build_network(test_inputs, test_targets,
+        self.test_net = self.build_network(self.test_inputs, self.test_targets,
                                            training=self.training, reuse=True)
 
         # Keep moving averages for the loss.
@@ -66,73 +63,35 @@ class Model:
         self.writer = tf.summary.FileWriter(str(Path('logs') / self.logdir),
                                             self.session.graph)
 
-        self.train_queue = Queue(len(self.dataset.train_files))
-        self.workers = [Thread(target=self.train_worker, daemon=True)
-                        for _ in range(workers)]
-
     def build_network(self, inputs, targets, reuse=None):
         """Create the neural network."""
         raise NotImplementedError
 
-    def train_worker(self):
-        """Work through the train queue and perform the specified task."""
-        while True:
-            try:
-                epoch, task = self.train_queue.get(timeout=2)
-            except Empty:
-                break
+    def train(self, epochs=1, save_frequency=10):
+        """Train the model.
 
-            if task == 'save':
-                step = self.session.run(self.step)
-                self.saver.save(self.session, str(self.logdir), step)
-            elif task == 'done':
-                print('Epoch {} done.'.format(epoch))
-            elif task == 'eval':
-                loss = self.session.run(self.test_net.loss)
-                print('eval', loss)
-                # print('Epoch {} with test loss {:.5f}.'.format(epoch, loss))
-            elif task == 'verbose':
-                _, loss = self.session.run(
-                    [self.train_net.train, self.train_net.loss],
-                    {self.training: True})
-                print('verbose', loss)
-                # print('Epoch {} with train loss {:.5f}.'.format(epoch, loss))
-            elif task == 'train+save':
-                summary, _ = self.session.run(
-                    [self.summaries, self.train_net.train],
-                    {self.training: True})
-                self.writer.add_summary(summary)
-            else:
-                self.session.run(self.train_net.train, {self.training: True})
-
-    def train(self, epochs=1, test_frequency=1, test_on_testset=False,
-              save_frequency=10):
-        """Train the model."""
-        # Start workers.
-        for worker in self.workers:
-            worker.start()
-
-        # Allow a specific amount of training steps with regular evaluations.
-        steps = len(self.dataset.train_files) // self.batchsize
+        TODO: Implement logging summaries on test set.
+        """
+        counter = 0
         for epoch in range(1, epochs + 1):
-            for i in range(steps, -1, -1):
-                if i == 0:
-                    self.train_queue.put((epoch, 'train+save'))
-                else:
-                    self.train_queue.put((epoch, 'train'))
-            if test_frequency > 0 and not epoch % test_frequency:
-                if test_on_testset:
-                    self.train_queue.put((epoch, 'evaluate'))
-                else:
-                    self.train_queue.put((epoch, 'verbose'))
-            elif test_frequency <= 0:
-                self.train_queue.put((epoch, 'done'))
-            if not epoch % save_frequency:
-                self.train_queue.put((epoch, 'save'))
-
-        # Wait for all workers to be done.
-        for worker in self.workers:
-            worker.join()
+            self.session.run(self.train_iter.initializer)
+            while True:
+                counter += 1
+                try:
+                    if not counter % 100:
+                        step, log, _ = self.session.run([self.step,
+                                                         self.summaries,
+                                                         self.train_net.train],
+                                                        {self.training: True})
+                        self.writer.add_summary(log)
+                    else:
+                        step, _ = self.session.run([self.step,
+                                                    self.train_net.train],
+                                                   {self.training: True})
+                except tf.errors.OutOfRangeError:
+                    break  # epoch done
+            if not save_frequency % epoch or epoch == epochs:
+                self.saver.save(self.session, str(self.logdir), step)
 
     def evaluate(self):
         """Evaluate the model.
@@ -141,11 +100,19 @@ class Model:
         in order to prevent out of memory errors. Basically performs a whole
         epoch of feed forward steps and collects the results.
         """
-        inputs, targets, outputs = [], [], []
-        for _ in range(len(self.dataset.test_files) // self.batchsize):
-            data, output = self.session.run([self.test_dataflow.out,
-                                             self.test_net.output])
-            inputs.extend(data[0])
-            targets.extend(data[1])
-            outputs.extend(output)
-        return list(zip(inputs, targets, outputs))
+        results = []
+        self.session.run(self.test_iter.initializer)
+        while True:
+            try:
+                inputs, targets, outputs = self.session.run(
+                    [self.test_inputs, self.test_targets,
+                     self.test_net.output])
+            except tf.errors.OutOfRangeError:
+                break
+            results.extend(list(zip(inputs, targets, outputs)))
+        return results
+
+    def _preprocess(self, input_image, target_image):
+        input_image = tf.image.resize_images(input_image, self.input_shape)
+        target_image = tf.image.resize_images(target_image, self.target_shape)
+        return to_float(input_image), to_float(target_image)
