@@ -4,12 +4,16 @@ import shutil
 import random
 from glob import glob
 from pathlib import Path
+from functools import partial
 
 import tensorflow as tf
 from tensorflow.contrib.data import Dataset as TFDataset
 
 
 DATA_DIR = Path.cwd() / 'tmp'
+
+
+to_string_tensor = partial(tf.convert_to_tensor, dtype=tf.string)
 
 
 class Dataset:
@@ -28,21 +32,23 @@ class Dataset:
         targets = glob(str(self.directory / '**/*.depth.*'), recursive=True)
         pairs = self._match_pairs(inputs, targets)
         perm = random.sample(range(len(pairs)), len(pairs))
-        train_files = [pairs[i] for i in perm[:len(pairs) // 10]]
-        test_files = [pairs[i] for i in perm[len(pairs) // 10:]]
+        self.train_files = [pairs[i] for i in perm[:len(pairs) // 10]]
+        self.test_files = [pairs[i] for i in perm[len(pairs) // 10:]]
 
-        inputs, targets = zip(*train_files)
+    def get(self, attrname, batchsize, shapes):
+        data = getattr(self, attrname)
+        inputs, targets = list(map(to_string_tensor, zip(*data)))
         tfdataset = TFDataset.from_tensor_slices((inputs, targets))
-        tfdataset = tfdataset.shuffle()
-        self.train = tfdataset.map(self._parse_files)
+        tfdataset = tfdataset.shuffle(buffer_size=10000)
+        tfdataset = tfdataset.map(partial(self._parse_images, shapes=shapes))
+        tfdataset = tfdataset.batch(batchsize)
+        return tfdataset.make_initializable_iterator()
 
-        inputs, targets = zip(*test_files)
-        tfdataset = TFDataset.from_tensor_slices((inputs, targets))
-        tfdataset = tfdataset.shuffle()
-        self.test = tfdataset.map(self._parse_files)
+    def test(self, batchsize, shape):
+        return self.get('test_files', batchsize, shape)
 
-    def __call__(self):
-        return self.train, self.test
+    def train(self, batchsize, shape):
+        return self.get('train_files', batchsize, shape)
 
     def _cleanup(self):
         """Delete temporary folders on exit."""
@@ -67,7 +73,19 @@ class Dataset:
                 print('No matching target found: {}'.format(path.name))
         return pairs
 
-    def _parse_files(self, input_filepath, target_filepath):
-        input_image = tf.image.decode_image(tf.read_file(input_filepath))
-        target_image = tf.image.decode_image(tf.read_file(target_filepath))
+    @classmethod
+    def _parse_image(cls, filepath, shape):
+        """Read image from file, resize it and scale its values from -1 to 1"""
+        read = tf.read_file(filepath)
+        decoded = tf.image.decode_png(read, channels=shape[-1])
+        resized = tf.image.resize_images(decoded, shape[:2])
+        scaled = (tf.image.convert_image_dtype(resized, tf.float32) - .5) * 2
+        return scaled
+
+    @classmethod
+    def _parse_images(cls, input_filepath, target_filepath, shapes):
+        """Read input and target image from file and preprocess them."""
+        input_shape, target_shape = shapes
+        input_image = cls._parse_image(input_filepath, input_shape)
+        target_image = cls._parse_image(target_filepath, target_shape)
         return input_image, target_image

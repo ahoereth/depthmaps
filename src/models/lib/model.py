@@ -24,16 +24,14 @@ class Model:
         self.dataset = dataset
         self.session = tf.Session()
 
-        tf.train.create_global_step()
-        self.step = tf.train.get_global_step()
+        self.step = tf.train.create_global_step()
 
         self.training = tf.placeholder_with_default(False, None)
 
         # Resize and scale the test and train data, provide iterators.
-        testdata = dataset.test.map(self._preprocess).batch(self.batchsize)
-        traindata = dataset.train.map(self._preprocess).batch(self.batchsize)
-        self.test_iter = testdata.make_initializable_iterator()
-        self.train_iter = traindata.make_initializable_iterator()
+        shapes = (self.input_shape, self.target_shape)
+        self.test_iter = dataset.test(self.batchsize, shapes)
+        self.train_iter = dataset.test(self.batchsize, shapes)
         self.test_inputs, self.test_targets = self.test_iter.get_next()
         train_inputs, train_targets = self.train_iter.get_next()
 
@@ -78,7 +76,8 @@ class Model:
             while True:
                 counter += 1
                 try:
-                    if not counter % 100:
+                    # collect summaries every 100 steps
+                    if not counter % 100 and self.summaries is not None:
                         step, log, _ = self.session.run([self.step,
                                                          self.summaries,
                                                          self.train_net.train],
@@ -111,8 +110,3 @@ class Model:
                 break
             results.extend(list(zip(inputs, targets, outputs)))
         return results
-
-    def _preprocess(self, input_image, target_image):
-        input_image = tf.image.resize_images(input_image, self.input_shape)
-        target_image = tf.image.resize_images(target_image, self.target_shape)
-        return to_float(input_image), to_float(target_image)
