@@ -116,13 +116,12 @@ class Pix2Pix(Model):
                 ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
             return out, theta, ops
 
-    def build_network(self, inputs, targets, training=False, reuse=None):
+    def build_network(self, inputs, targets, training=False):
         """Create a generative adversarial image generation network."""
         inputs = inputs * 2 - 1  # scale from -1 to 1
 
-        # Create generator -- also acts as the sample.
-        generator, g_theta, g_ops = self.make_generator(inputs, training,
-                                                        reuse=reuse)
+        # Create generator.
+        generator, g_theta, g_ops = self.make_generator(inputs, training)
         tf.contrib.layers.summarize_tensors(g_ops)
         outputs = (generator + 1) / 2  # scale from 0 to 1
 
@@ -131,8 +130,7 @@ class Pix2Pix(Model):
         real = tf.concat([inputs, targets], axis=-1)
         fake = tf.concat([inputs, generator], axis=-1)
         d_real, d_theta, d_ops = self.make_discriminator(real,
-                                                         training=training,
-                                                         reuse=reuse)
+                                                         training=training)
         d_fake, _, _ = self.make_discriminator(fake, training=training,
                                                reuse=True)
         tf.contrib.layers.summarize_tensors(d_ops)
@@ -146,10 +144,6 @@ class Pix2Pix(Model):
             d_loss_real = tf.log(d_real + 1e-12)
             d_loss_fake = tf.log(1 - d_fake + 1e-12)
             d_loss = tf.reduce_mean(-(d_loss_real + d_loss_fake))
-
-        # Only run the training logic for the original train network.
-        if reuse is not None:
-            return Network(outputs, None, None)
 
         def train_generator():
             optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)

@@ -18,9 +18,9 @@ class Eigen2014(Model):
     target_shape = (74, 55, 1)
     batchsize = 32
 
-    def build_network(self, inputs, targets, training=False, reuse=None):
+    def build_network(self, inputs, targets, training=False):
         """Create a coarse/fine convolutional neural network."""
-        with tf.variable_scope('coarse', reuse=reuse):
+        with tf.variable_scope('coarse'):
             coarse = tf.layers.conv2d(inputs, 96, 11, activation=tf.nn.relu,
                                       strides=4)
             coarse = tf.layers.max_pooling2d(coarse, pool_size=2, strides=2)
@@ -38,8 +38,7 @@ class Eigen2014(Model):
             coarse = tf.layers.dropout(coarse, rate=.5, training=training)
             coarse = tf.layers.dense(coarse, 74 * 55)
             coarse = tf.reshape(coarse, (-1, 74, 55, 1))
-
-        with tf.variable_scope('fine', reuse=reuse):
+        with tf.variable_scope('fine'):
             fine = tf.layers.conv2d(inputs, 63, 9, activation=tf.nn.relu,
                                     strides=2,)
             fine = tf.layers.max_pooling2d(fine, pool_size=2, strides=2)
@@ -47,8 +46,7 @@ class Eigen2014(Model):
             fine = tf.layers.conv2d(fine, 64, 5, activation=tf.nn.relu,
                                     padding='same')
             outputs = tf.layers.conv2d(fine, 1, 5, padding='same')
-
-        with tf.variable_scope('optimizer', reuse=reuse):
+        with tf.variable_scope('optimizer'):
             loss = tf.reduce_mean(tf.squared_difference(targets, outputs))
             train = tf.train.AdamOptimizer(1e-4).minimize(loss, self.step)
         return Network(outputs, train, loss)

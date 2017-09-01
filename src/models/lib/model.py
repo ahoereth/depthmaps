@@ -18,7 +18,7 @@ class Model:
     target_shape = (0, 0, 0)
     batchsize = 32
 
-    def __init__(self, dataset, epochs, checkpoint=None):
+    def __init__(self, dataset, checkpoint=None):
         time = datetime.now().strftime('%y%m%d-%H%M')
         self.logdir = Path('logs') / type(self).__name__ / time
 
@@ -31,17 +31,12 @@ class Model:
 
         # Resize and scale the test and train data, provide iterators.
         shapes = (self.input_shape, self.target_shape)
-        self.test_iter = dataset.test(self.batchsize, shapes)
-        self.test_inputs, self.test_targets = self.test_iter.get_next()
-        train_iter = dataset.train(epochs, self.batchsize, shapes)
-        train_inputs, train_targets = train_iter.get_next()
+        feed, self.feedhandle = self.dataset.finalize(shapes, self.batchsize)
+        self.inputs, self.targets = feed
 
-        # To handle the train and test split there are two networks which
-        # share variables. This allows us to use them independently.
-        self.train_net = self.build_network(train_inputs, train_targets,
-                                            training=self.training)
-        self.test_net = self.build_network(self.test_inputs, self.test_targets,
-                                           training=self.training, reuse=True)
+        # Create the network.
+        self.net = self.build_network(self.inputs, self.targets,
+                                      training=self.training)
 
         # Keep moving averages for the loss.
         # train_ema = tf.train.ExponentialMovingAverage(decay=0.999)
@@ -66,37 +61,21 @@ class Model:
         """Create the neural network."""
         raise NotImplementedError
 
-    def _train(self, coord, save_frequency=1000):
-        """Train the model.
-
-        TODO: Implement logging summaries on test set.
-        """
-        summarize = False
-        killed = False
+    def _train(self, coord, handle, save_frequency=1000):
+        """Train the model."""
         while not coord.should_stop():
             try:
-                if summarize and self.summaries is not None:
-                    step, log, _ = self.session.run([self.step,
-                                                     self.summaries,
-                                                     self.train_net.train],
-                                                    {self.training: True})
-                    self.writer.add_summary(log)
-                    summarize = False
-                else:
-                    step, _ = self.session.run([self.step,
-                                                self.train_net.train],
-                                               {self.training: True})
+                self.session.run([self.step, self.net.train],
+                                 {self.feedhandle: handle,
+                                  self.training: True})
             except tf.errors.OutOfRangeError:
                 coord.request_stop()
-                killed = True
-            if not step % 100:
-                summarize = True  # create summary after next step
-            if not step % 1000 or killed:
-                self.saver.save(self.session, str(self.logdir), step)
 
-    def train(self, workers=2, save_frequency=1000):
+    def train(self, epochs=1, workers=2, save_frequency=1000):
+        handle = self.dataset.create_train_feed(self.session, epochs)
         coord = tf.train.Coordinator()
-        kwargs = {'coord': coord, 'save_frequency': save_frequency}
+        kwargs = {'coord': coord, 'save_frequency': save_frequency,
+                  'handle': handle}
         threads = [Thread(target=self._train, kwargs=kwargs)
                    for _ in range(workers)]
         for thread in threads:
@@ -111,12 +90,12 @@ class Model:
         epoch of feed forward steps and collects the results.
         """
         results = []
-        self.session.run(self.test_iter.initializer)
+        handle = self.dataset.create_train_feed(self.session)
         while True:
             try:
                 inputs, targets, outputs = self.session.run(
-                    [self.test_inputs, self.test_targets,
-                     self.test_net.output])
+                    [self.inputs, self.targets, self.net.output],
+                    {self.feedhandle: handle})
             except tf.errors.OutOfRangeError:
                 break
             results.extend(list(zip(inputs, targets, outputs)))
