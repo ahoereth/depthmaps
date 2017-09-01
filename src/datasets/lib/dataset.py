@@ -42,13 +42,17 @@ class Dataset:
         tfdataset = tfdataset.shuffle(buffer_size=10000)
         tfdataset = tfdataset.map(partial(self._parse_images, shapes=shapes))
         tfdataset = tfdataset.batch(batchsize)
-        return tfdataset.make_initializable_iterator()
+        return tfdataset
 
     def test(self, batchsize, shape):
-        return self.get('test_files', batchsize, shape)
+        tfdataset = self.get('test_files', batchsize, shape)
+        tfdataset = tfdataset.repeat()
+        return tfdataset.make_initializable_iterator()
 
-    def train(self, batchsize, shape):
-        return self.get('train_files', batchsize, shape)
+    def train(self, epochs, batchsize, shape):
+        tfdataset = self.get('train_files', batchsize, shape)
+        tfdataset = tfdataset.repeat(epochs)
+        return tfdataset.make_one_shot_iterator()
 
     def _cleanup(self):
         """Delete temporary folders on exit."""
