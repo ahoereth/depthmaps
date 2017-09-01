@@ -23,7 +23,6 @@ class Model:
         self.logdir = Path('logs') / type(self).__name__ / time
 
         self.dataset = dataset
-        self.session = tf.Session()
 
         self.step = tf.train.create_global_step()
 
@@ -41,46 +40,33 @@ class Model:
         # Keep moving averages for the loss.
         # train_ema = tf.train.ExponentialMovingAverage(decay=0.999)
         # test_ema = tf.train.ExponentialMovingAverage(decay=0.999)
-        # train_ema_op = train_ema.apply(to_tuple(self.train_net.loss))
+        # train_ema_op = train_ema.apply(to_tuple(self.net.loss))
         # test_ema_op = test_ema.apply(to_tuple(self.test_net.loss))
-
-        # Save the model regularly and maybe restore a saved model.
-        self.saver = tf.train.Saver(max_to_keep=1,
-                                    keep_checkpoint_every_n_hours=1)
-        if checkpoint is not None:
-            self.saver.restore(checkpoint)
-        else:
-            self.session.run(tf.global_variables_initializer())
-
-        # Store summaries for tensorboard.
-        self.summaries = tf.summary.merge_all()
-        self.writer = tf.summary.FileWriter(str(Path('logs') / self.logdir),
-                                            self.session.graph)
 
     def build_network(self, inputs, targets, reuse=None):
         """Create the neural network."""
         raise NotImplementedError
 
-    def _train(self, coord, handle, save_frequency=1000):
+    def _train(self, sess, handle):
         """Train the model."""
-        while not coord.should_stop():
+        while not sess.should_stop():
             try:
-                self.session.run([self.step, self.net.train],
-                                 {self.feedhandle: handle,
-                                  self.training: True})
+                sess.run(self.net.train, {self.feedhandle: handle,
+                                          self.training: True})
             except tf.errors.OutOfRangeError:
-                coord.request_stop()
+                break
 
-    def train(self, epochs=1, workers=2, save_frequency=1000):
-        handle = self.dataset.create_train_feed(self.session, epochs)
-        coord = tf.train.Coordinator()
-        kwargs = {'coord': coord, 'save_frequency': save_frequency,
-                  'handle': handle}
-        threads = [Thread(target=self._train, kwargs=kwargs)
-                   for _ in range(workers)]
-        for thread in threads:
-            thread.start()
-        coord.join(threads)
+    def train(self, epochs=1, workers=2):
+        handle_op = self.dataset.create_train_feed(epochs)
+        kwargs = dict(checkpoint_dir=str(self.logdir), save_summaries_secs=100)
+        with tf.train.MonitoredTrainingSession(**kwargs) as sess:
+            handle = sess.run(handle_op)
+            threads = [Thread(target=self._train, args=(sess, handle))
+                       for _ in range(workers)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
 
     def evaluate(self):
         """Evaluate the model.
@@ -89,14 +75,19 @@ class Model:
         in order to prevent out of memory errors. Basically performs a whole
         epoch of feed forward steps and collects the results.
         """
+        if not tf.train.checkpoint_exists(str(self.logdir)):
+            raise RuntimeError('No checkpoint found in logdir: {}'
+                               .format(self.logdir))
         results = []
-        handle = self.dataset.create_train_feed(self.session)
-        while True:
-            try:
-                inputs, targets, outputs = self.session.run(
-                    [self.inputs, self.targets, self.net.output],
-                    {self.feedhandle: handle})
-            except tf.errors.OutOfRangeError:
-                break
-            results.extend(list(zip(inputs, targets, outputs)))
+        handle = self.dataset.create_train_feed()
+        with tf.Session() as sess:
+            tf.train.Saver.restore(sess, str(self.logdir))
+            while True:
+                try:
+                    inputs, targets, outputs = self.session.run(
+                        [self.inputs, self.targets, self.net.output],
+                        {self.feedhandle: handle})
+                except tf.errors.OutOfRangeError:
+                    break
+                results.extend(list(zip(inputs, targets, outputs)))
         return results

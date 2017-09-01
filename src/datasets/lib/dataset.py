@@ -42,24 +42,24 @@ class Dataset:
         getter = iterator.get_next()
         return getter, handle
 
-    def _get_feed(self, attrname, session, epochs=1, threads=2):
+    def _get_feed(self, attrname, epochs=1, threads=4):
         data = getattr(self, attrname)
         inputs, targets = [tf.convert_to_tensor(x, tf.string)
                            for x in list(zip(*data))]
         tfdataset = TFDataset.from_tensor_slices((inputs, targets))
         tfdataset = tfdataset.shuffle(buffer_size=10000)
-        tfdataset = tfdataset.map(self._parse_images, num_threads=2,
+        tfdataset = tfdataset.map(self._parse_images, num_threads=threads,
                                   output_buffer_size=self.batchsize * 4)
         tfdataset = tfdataset.batch(self.batchsize)
         tfdataset = tfdataset.repeat(epochs)
         iterator = tfdataset.make_one_shot_iterator()
-        return session.run(iterator.string_handle())
+        return iterator.string_handle()
 
-    def create_test_feed(self, session, epochs=1, threads=2):
-        return self._get_feed('test_files', session, epochs, threads)
+    def create_test_feed(self, epochs=1, threads=2):
+        return self._get_feed('test_files', epochs, threads)
 
-    def create_train_feed(self, session, epochs=1, threads=2):
-        return self._get_feed('train_files', session, epochs, threads)
+    def create_train_feed(self, epochs=1, threads=2):
+        return self._get_feed('train_files', epochs, threads)
 
     def _cleanup(self):
         """Delete temporary folders on exit."""
