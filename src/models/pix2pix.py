@@ -29,11 +29,11 @@ class Pix2Pix(Model):
                                kernel_initializer=init)
         if norm is not None:
             net = tf.layers.batch_normalization(net, training=norm)
-        return activation(net)
+        return activation(net), net
 
     @staticmethod
     def conv2d_transpose(inputs, num_outputs, kernel_size=(4, 4), strides=2,
-                         padding='SAME', activation=tf.nn.relu, norm=None):
+                         padding='SAME', activation=tf.identity, norm=None):
         """Wrapper for tf.layers.conv2d_transpose with default parameters."""
         init = tf.random_normal_initializer(0, 0.02)
         net = tf.layers.conv2d_transpose(inputs, num_outputs, kernel_size,
@@ -58,11 +58,12 @@ class Pix2Pix(Model):
             (List[tf.Operation]): Batch normalization update operations.
         """
         with tf.variable_scope('discriminator', reuse=reuse) as scope:
-            net = cls.conv2d(images, 64)  # 128x128
-            net = cls.conv2d(net, 128, norm=training)  # 64x64
-            net = cls.conv2d(net, 256, norm=training)  # 32x32
-            net = cls.conv2d(net, 512, (1, 1), norm=training)  # 31x31
-            net = cls.conv2d(net, 1, (1, 1), activation=tf.nn.sigmoid)  # 30x30
+            net, _ = cls.conv2d(images, 64)  # 128x128
+            net, _ = cls.conv2d(net, 128, norm=training)  # 64x64
+            net, _ = cls.conv2d(net, 256, norm=training)  # 32x32
+            net, _ = cls.conv2d(net, 512, (1, 1), norm=training)  # 31x31
+            net, _ = cls.conv2d(net, 1, (1, 1),
+                                activation=tf.nn.sigmoid)  # 30x30
             theta = scope.trainable_variables()
             ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
         return net, theta, ops
@@ -82,36 +83,35 @@ class Pix2Pix(Model):
             (List[tf.Operation]): Batch normalization update operations.
         """
         with tf.variable_scope('encoder'):  # 256x256
-            net = images
-            enc0 = cls.conv2d(net, 64)  # 128x128
-            enc1 = cls.conv2d(enc0, 128, norm=training)  # 64x64
-            enc2 = cls.conv2d(enc1, 256, norm=training)  # 32x32
-            enc3 = cls.conv2d(enc2, 512, norm=training)  # 16x16
-            enc4 = cls.conv2d(enc3, 512, norm=training)  # 8x8
-            enc5 = cls.conv2d(enc4, 512, norm=training)  # 4x4
-            enc6 = cls.conv2d(enc5, 512, norm=training)  # 2x2x512
-            enc7 = cls.conv2d(enc6, 512, norm=training)  # 1x1x512
+            net, enc0 = cls.conv2d(images, 64)  # 128x128
+            net, enc1 = cls.conv2d(net, 128, norm=training)  # 64x64
+            net, enc2 = cls.conv2d(net, 256, norm=training)  # 32x32
+            net, enc3 = cls.conv2d(net, 512, norm=training)  # 16x16
+            net, enc4 = cls.conv2d(net, 512, norm=training)  # 8x8
+            net, enc5 = cls.conv2d(net, 512, norm=training)  # 4x4
+            net, enc6 = cls.conv2d(net, 512, norm=training)  # 2x2x512
+            net, _ = cls.conv2d(net, 512, norm=training,
+                                activation=tf.nn.relu)  # 1x1x512
         with tf.variable_scope('decoder'):
-            dec = cls.conv2d_transpose(enc7, 512, norm=training)  # 2x2
-            dec = tf.layers.dropout(dec, .5)  # 512
-            dec = tf.concat([dec, enc6], axis=-1)  # 1024
-            dec = cls.conv2d_transpose(dec, 512, norm=training)  # 4x4
-            dec = tf.layers.dropout(dec, .5)
-            dec = tf.concat([dec, enc5], axis=-1)  # 1024
-            dec = cls.conv2d_transpose(dec, 512, norm=training)  # 8x8
-            dec = tf.layers.dropout(dec, .5)
-            dec = tf.concat([dec, enc4], axis=-1)  # 1024
-            dec = cls.conv2d_transpose(dec, 512, norm=training)  # 16x16
-            dec = tf.concat([dec, enc3], axis=-1)  # 1024
-            dec = cls.conv2d_transpose(dec, 256, norm=training)  # 32x32
-            dec = tf.concat([dec, enc2], axis=-1)  # 512
-            dec = cls.conv2d_transpose(dec, 128, norm=training)  # 64x64
-            dec = tf.concat([dec, enc1], axis=-1)  # 256
-            dec = cls.conv2d_transpose(dec, 64, norm=training)  # 128x128
-            dec = tf.concat([dec, enc0], axis=-1)  # 128
-            out = cls.conv2d_transpose(dec, 1,
-                                       activation=tf.nn.tanh)  # 256x256
-        return out
+            net = cls.conv2d_transpose(net, 512, norm=training)  # 2x2
+            net = tf.layers.dropout(net, .5)  # 512
+            net = tf.nn.relu(tf.concat([net, enc6], axis=-1))  # 1024
+            net = cls.conv2d_transpose(net, 512, norm=training)  # 4x4
+            net = tf.layers.dropout(net, .5)
+            net = tf.nn.relu(tf.concat([net, enc5], axis=-1))  # 1024
+            net = cls.conv2d_transpose(net, 512, norm=training)  # 8x8
+            net = tf.layers.dropout(net, .5)
+            net = tf.nn.relu(tf.concat([net, enc4], axis=-1))  # 1024
+            net = cls.conv2d_transpose(net, 512, norm=training)  # 16x16
+            net = tf.nn.relu(tf.concat([net, enc3], axis=-1))  # 1024
+            net = cls.conv2d_transpose(net, 256, norm=training)  # 32x32
+            net = tf.nn.relu(tf.concat([net, enc2], axis=-1))  # 512
+            net = cls.conv2d_transpose(net, 128, norm=training)  # 64x64
+            net = tf.nn.relu(tf.concat([net, enc1], axis=-1))  # 256
+            net = cls.conv2d_transpose(net, 64, norm=training)  # 128x128
+            net = tf.nn.relu(tf.concat([net, enc0], axis=-1))  # 128
+            net = cls.conv2d_transpose(net, 1)  # 256x256
+        return tf.nn.tanh(net)
 
         # print(get_available_gpus())
     def build_network(self, inputs, targets, training=False):
@@ -171,22 +171,24 @@ class Pix2Pix(Model):
                 tf.summary.scalar('train', train_emas.average(d_loss))
                 tf.summary.scalar('test', test_emas.average(d_loss))
 
-        def train_generator():
-            with tf.variable_scope('generator/optimizer'):
-                with tf.control_dependencies(g_ops + [ema_g_train_op]):
-                    optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
-                    return optimizer.minimize(g_loss, self.step, g_theta)
+        # def train_discriminator():
+        with tf.variable_scope('discriminator/optimizer'):
+            with tf.control_dependencies(d_ops + [ema_d_train_op]):
+                optimizer = tf.train.AdamOptimizer(2e-4, .5)
+                d_train = optimizer.minimize(d_loss, var_list=d_theta,
+                                             global_step=self.step)
 
-        def train_discriminator():
-            with tf.variable_scope('discriminator/optimizer'):
-                with tf.control_dependencies(d_ops + [ema_d_train_op]):
-                    optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
-                    return optimizer.minimize(d_loss, self.step, d_theta)
+        # def train_generator():
+        with tf.variable_scope('generator/optimizer'):
+            with tf.control_dependencies(g_ops + [ema_g_train_op, d_train]):
+                optimizer = tf.train.AdamOptimizer(2e-4, .5)
+                g_train = optimizer.minimize(g_loss, var_list=g_theta)
 
         # Run train operations alternating.
-        train = tf.cond(tf.cast(self.step % 2, tf.bool),
-                        train_generator,
-                        train_discriminator)
+        # train = tf.cond(tf.cast(self.step % 2, tf.bool),
+        #                 train_generator,
+        #                 train_discriminator)
+        train = g_train
 
         # Scale generation output from 0 to 1.
         with tf.variable_scope('testing'):
