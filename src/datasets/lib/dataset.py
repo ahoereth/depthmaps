@@ -96,10 +96,10 @@ class Dataset:
     def _parse_image(cls, filepath, shape):
         """Read image from file, resize it and scale its values from 0 to 1."""
         read = tf.read_file(filepath)
-        decoded = tf.image.decode_png(read, channels=shape[-1])
-        resized = tf.image.resize_images(decoded, shape[:2])
-        scaled = tf.image.convert_image_dtype(resized, tf.float32) / 255
-        return scaled
+        decoded = tf.image.decode_png(read, channels=shape[-1], dtype=tf.uint8)
+        scaled = tf.image.convert_image_dtype(decoded, tf.float32)
+        resized = tf.image.resize_images(scaled, shape[:2])
+        return resized
 
     def view(self):
         """Display samples from dataset using dataviewer."""
