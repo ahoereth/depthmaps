@@ -37,6 +37,8 @@ class Model:
         self.net = self.build_network(self.inputs, self.targets,
                                       training=self.training)
 
+        self.summaries = tf.summary.merge_all()
+
         # Keep moving averages for the loss.
         # train_ema = tf.train.ExponentialMovingAverage(decay=0.999)
         # test_ema = tf.train.ExponentialMovingAverage(decay=0.999)
@@ -58,9 +60,17 @@ class Model:
 
     def train(self, epochs=1, workers=2):
         handle_op = self.dataset.create_train_feed(epochs)
-        kwargs = dict(checkpoint_dir=str(self.logdir), save_summaries_secs=100)
-        with tf.train.MonitoredTrainingSession(**kwargs) as sess:
-            handle = sess.run(handle_op)
+
+        summary_hook = tf.train.SummarySaverHook(output_dir=str(self.logdir),
+                                                 summary_op=self.summaries,
+                                                 save_secs=20)
+        step_hook = tf.train.StepCounterHook(output_dir=str(self.logdir),
+                                             every_n_steps=100)
+        hooks = [summary_hook, step_hook]
+
+        kwargs = dict(checkpoint_dir=str(self.logdir), hooks=hooks)
+        with tf.train.SingularMonitoredSession(**kwargs) as sess:
+            handle = sess.raw_session().run(handle_op)
             threads = [Thread(target=self._train, args=(sess, handle))
                        for _ in range(workers)]
             for thread in threads:
@@ -80,9 +90,9 @@ class Model:
 
         results = []
         handle_op = self.dataset.create_train_feed()
-        chief = tf.train.ChiefSessionCreator(checkpoint_dir=str(self.logdir))
-        with tf.train.MonitoredSession(chief) as sess:
-            handle = sess.run(handle_op)
+        kwargs = dict(checkpoint_dir=str(self.logdir))
+        with tf.train.SingularMonitoredSession(**kwargs) as sess:
+            handle = sess.raw_session().run(handle_op)
             while not sess.should_stop():
                 if fetch_images:
                     inputs, targets, outputs = sess.run(

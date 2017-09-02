@@ -49,6 +49,7 @@ class Eigen2014(Model):
         with tf.variable_scope('loss'):
             tf.losses.mean_squared_error(targets, outputs)
             loss = tf.losses.get_total_loss()
+            tf.summary.scalar('total', loss)
         with tf.variable_scope('optimizer'):
             train = tf.train.AdamOptimizer(1e-4).minimize(loss, self.step)
         return Network(outputs, train, loss)

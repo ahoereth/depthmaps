@@ -15,7 +15,10 @@ class Simple(Model):
             net = tf.layers.conv2d(net, 16, 8, 1, activation=tf.nn.relu)
             net = tf.layers.conv2d(net, 32, 4, 1, activation=tf.nn.relu)
             outputs = tf.layers.conv2d(net, 1, 1, activation=tf.identity)
+        with tf.variable_scope('loss'):
+            tf.losses.mean_squared_error(targets, outputs)
+            loss = tf.losses.get_total_loss()
+            tf.summary.scalar('total', loss)
         with tf.variable_scope('optimizer'):
-            loss = tf.losses.mean_squared_error(targets, outputs)
             train = tf.train.AdamOptimizer().minimize(loss, self.step)
         return Network(outputs, train, loss)
