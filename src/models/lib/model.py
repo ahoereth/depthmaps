@@ -43,7 +43,7 @@ class Model:
         # train_ema_op = train_ema.apply(to_tuple(self.net.loss))
         # test_ema_op = test_ema.apply(to_tuple(self.test_net.loss))
 
-    def build_network(self, inputs, targets, reuse=None):
+    def build_network(self, inputs, targets, training=False):
         """Create the neural network."""
         raise NotImplementedError
 
@@ -68,26 +68,27 @@ class Model:
             for thread in threads:
                 thread.join()
 
-    def evaluate(self):
+    def evaluate(self, fetch_images=True):
         """Evaluate the model.
 
         Still passes the data through the model in the specified batchsize
         in order to prevent out of memory errors. Basically performs a whole
         epoch of feed forward steps and collects the results.
         """
-        if not tf.train.checkpoint_exists(str(self.logdir)):
-            raise RuntimeError('No checkpoint found in logdir: {}'
-                               .format(self.logdir))
+        assert tf.train.checkpoint_exists(str(self.logdir)), \
+            'No checkpoint found in logdir: {}'.format(self.logdir)
+
         results = []
-        handle = self.dataset.create_train_feed()
-        with tf.Session() as sess:
-            tf.train.Saver.restore(sess, str(self.logdir))
-            while True:
-                try:
-                    inputs, targets, outputs = self.session.run(
+        handle_op = self.dataset.create_train_feed()
+        chief = tf.train.ChiefSessionCreator(checkpoint_dir=str(self.logdir))
+        with tf.train.MonitoredSession(chief) as sess:
+            handle = sess.run(handle_op)
+            while not sess.should_stop():
+                if fetch_images:
+                    inputs, targets, outputs = sess.run(
                         [self.inputs, self.targets, self.net.output],
                         {self.feedhandle: handle})
-                except tf.errors.OutOfRangeError:
-                    break
-                results.extend(list(zip(inputs, targets, outputs)))
+                    results.extend(list(zip(inputs, targets, outputs)))
+                else:
+                    sess.run(self.net.output, {self.feedhandle: handle})
         return results

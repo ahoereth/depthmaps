@@ -46,7 +46,9 @@ class Eigen2014(Model):
             fine = tf.layers.conv2d(fine, 64, 5, activation=tf.nn.relu,
                                     padding='same')
             outputs = tf.layers.conv2d(fine, 1, 5, padding='same')
+        with tf.variable_scope('loss'):
+            tf.losses.mean_squared_error(targets, outputs)
+            loss = tf.losses.get_total_loss()
         with tf.variable_scope('optimizer'):
-            loss = tf.reduce_mean(tf.squared_difference(targets, outputs))
             train = tf.train.AdamOptimizer(1e-4).minimize(loss, self.step)
         return Network(outputs, train, loss)

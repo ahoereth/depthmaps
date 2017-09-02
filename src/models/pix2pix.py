@@ -68,7 +68,7 @@ class Pix2Pix(Model):
         return net, theta, ops
 
     @classmethod
-    def make_generator(cls, images, training, reuse=None):
+    def make_generator(cls, images, training):
         """Generator.
 
         Args:
@@ -81,7 +81,7 @@ class Pix2Pix(Model):
             (tf.Tensor): Tanh network output, single channel shaped as input.
             (List[tf.Operation]): Batch normalization update operations.
         """
-        with tf.variable_scope('generator', reuse=reuse) as scope:
+        with tf.variable_scope('generator') as scope:
             with tf.variable_scope('encoder'):  # 256x256
                 net = images
                 enc0 = cls.conv2d(net, 64)  # 128x128
@@ -123,44 +123,59 @@ class Pix2Pix(Model):
         # Create generator.
         generator, g_theta, g_ops = self.make_generator(inputs, training)
         tf.contrib.layers.summarize_tensors(g_ops)
-        outputs = (generator + 1) / 2  # scale from 0 to 1
 
         # Create the two discriminator graphs, once with the ground truths
         # and once the generated depth maps as inputs.
         real = tf.concat([inputs, targets], axis=-1)
         fake = tf.concat([inputs, generator], axis=-1)
-        d_real, d_theta, d_ops = self.make_discriminator(real,
-                                                         training=training)
-        d_fake, _, _ = self.make_discriminator(fake, training=training,
-                                               reuse=True)
+        d_real, d_theta, d_ops = self.make_discriminator(real, training)
+        d_fake, _, _ = self.make_discriminator(fake, training, reuse=True)
         tf.contrib.layers.summarize_tensors(d_ops)
 
-        with tf.variable_scope('GeneratorLoss'):
+        # Keep moving averages over the training and testing loss individually.
+        train_emas = tf.train.ExponentialMovingAverage(decay=0.999)
+        test_emas = tf.train.ExponentialMovingAverage(decay=0.999)
+
+        with tf.variable_scope('generator/loss'):
             g_loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12))
             g_loss_l1 = tf.reduce_mean(tf.abs(targets - generator))
             g_loss = g_loss_gan + self.LAMBDA * g_loss_l1
+            with tf.name_scope('summaries'):
+                ema_g_train_op = train_emas.apply([g_loss])
+                ema_g_test_op = test_emas.apply([g_loss])
+                tf.summary.scalar('train', train_emas.average(g_loss))
+                tf.summary.scalar('test', test_emas.average(g_loss))
 
-        with tf.variable_scope('DiscriminatorLoss'):
+        with tf.variable_scope('discriminator/loss'):
             d_loss_real = tf.log(d_real + 1e-12)
             d_loss_fake = tf.log(1 - d_fake + 1e-12)
             d_loss = tf.reduce_mean(-(d_loss_real + d_loss_fake))
+            with tf.name_scope('summaries'):
+                ema_d_train_op = train_emas.apply([d_loss])
+                ema_d_test_op = test_emas.apply([d_loss])
+                tf.summary.scalar('train', train_emas.average(d_loss))
+                tf.summary.scalar('test', test_emas.average(d_loss))
 
         def train_generator():
-            optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
-            with tf.control_dependencies(g_ops):
-                train_op = optimizer.minimize(d_loss, var_list=g_theta,
-                                              global_step=self.step)
-            return train_op
+            with tf.variable_scope('generator/optimizer'):
+                with tf.control_dependencies(g_ops + [ema_g_train_op]):
+                    optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
+                    return optimizer.minimize(g_loss, self.step, g_theta)
 
         def train_discriminator():
-            optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
-            with tf.control_dependencies(d_ops):
-                train_op = optimizer.minimize(d_loss, var_list=d_theta,
-                                              global_step=self.step)
-            return train_op
+            with tf.variable_scope('discriminator/optimizer'):
+                with tf.control_dependencies(d_ops + [ema_d_train_op]):
+                    optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
+                    return optimizer.minimize(d_loss, self.step, d_theta)
 
         # Run train operations alternating.
         train = tf.cond(tf.cast(self.step % 2, tf.bool),
                         train_generator,
                         train_discriminator)
-        return Network(outputs, train, [d_loss, g_loss])
+
+        # Scale generation output from 0 to 1.
+        with tf.variable_scope('testing'):
+            with tf.control_dependencies([ema_g_test_op, ema_d_test_op]):
+                outputs = (generator + 1) / 2
+
+        return Network(outputs, train, None)
