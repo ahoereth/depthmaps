@@ -44,7 +44,7 @@ class Pix2Pix(Model):
         return activation(net)
 
     @classmethod
-    def make_discriminator(cls, images, training, reuse=None):
+    def make_discriminator(cls, images, training):
         """Discriminator.
 
         Args:
@@ -57,15 +57,12 @@ class Pix2Pix(Model):
             (tf.Tensor): Linear network output, single scalar.
             (List[tf.Operation]): Batch normalization update operations.
         """
-        with tf.variable_scope('discriminator', reuse=reuse) as scope:
-            net = cls.conv2d(images, 64)  # 128x128
-            net = cls.conv2d(net, 128, norm=training)  # 64x64
-            net = cls.conv2d(net, 256, norm=training)  # 32x32
-            net = cls.conv2d(net, 512, (1, 1), norm=training)  # 31x31
-            net = cls.conv2d(net, 1, (1, 1), activation=tf.nn.sigmoid)  # 30x30
-            theta = scope.trainable_variables()
-            ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
-        return net, theta, ops
+        net = cls.conv2d(images, 64)  # 128x128
+        net = cls.conv2d(net, 128, norm=training)  # 64x64
+        net = cls.conv2d(net, 256, norm=training)  # 32x32
+        net = cls.conv2d(net, 512, (1, 1), norm=training)  # 31x31
+        net = cls.conv2d(net, 1, (1, 1), activation=tf.nn.sigmoid)
+        return net  # 30x30
 
     @classmethod
     def make_generator(cls, images, training):
@@ -91,6 +88,7 @@ class Pix2Pix(Model):
             enc5 = cls.conv2d(enc4, 512, norm=training)  # 4x4
             enc6 = cls.conv2d(enc5, 512, norm=training)  # 2x2x512
             enc7 = cls.conv2d(enc6, 512, norm=training)  # 1x1x512
+        tf.summary.histogram('encoded', enc7)
         with tf.variable_scope('decoder'):
             dec = cls.conv2d_transpose(enc7, 512, norm=training)  # 2x2
             dec = tf.layers.dropout(dec, .5)  # 512
@@ -109,9 +107,9 @@ class Pix2Pix(Model):
             dec = tf.concat([dec, enc1], axis=-1)  # 256
             dec = cls.conv2d_transpose(dec, 64, norm=training)  # 128x128
             dec = tf.concat([dec, enc0], axis=-1)  # 128
-            out = cls.conv2d_transpose(dec, 1,
-                                       activation=tf.nn.tanh)  # 256x256
-        return out
+            out = cls.conv2d_transpose(dec, 1, activation=tf.nn.tanh)
+        tf.summary.histogram('output', out)
+        return out  # 256x256
 
         # print(get_available_gpus())
     def build_network(self, inputs, targets, training=False):
@@ -122,75 +120,73 @@ class Pix2Pix(Model):
         the tanh range and back.
         """
         # Scale inputs and targets from -1 to 1.
-        inputs = inputs * 2 - 1
-        targets = targets * 2 - 1
-        tf.summary.histogram('inputs', inputs)
-        tf.summary.histogram('targets', targets)
+        inputs = tf.subtract(inputs * 2, 1, name='scaled_inputs')
+        targets = tf.subtract(targets * 2, 1, name='scaled_targets')
+        tf.summary.histogram('input', inputs)
+        tf.summary.histogram('target', targets)
 
         # Create generator.
-        with tf.variable_scope('generation') as scope:
+        with tf.variable_scope('generator/net') as g_net:
             generator = self.make_generator(inputs, training)
-            tf.summary.histogram('rawout', generator)
-            g_theta = scope.trainable_variables()
-            tf.contrib.layers.summarize_tensors(g_theta)
-            g_ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
-            samples = (generator + 1) / 2
-            tf.summary.image('generator', samples)
 
         # Create the two discriminator graphs, once with the ground truths
         # and once the generated depth maps as inputs.
-        real = tf.concat([inputs, targets], axis=-1)
-        fake = tf.concat([inputs, generator], axis=-1)
-        d_real, d_theta, d_ops = self.make_discriminator(real, training)
-        d_fake, _, _ = self.make_discriminator(fake, training, reuse=True)
-        tf.contrib.layers.summarize_tensors(d_ops)
+        with tf.variable_scope('discriminator') as d_net:  # Real
+            real = tf.concat([inputs, targets], axis=-1, name='input/real')
+            d_real = self.make_discriminator(real, training)
+        with tf.variable_scope('discriminator', reuse=True):  # Fake
+            fake = tf.concat([inputs, generator], axis=-1, name='input/fake')
+            d_fake = self.make_discriminator(fake, training)
 
         # Keep moving averages over the training and testing loss individually.
-        train_emas = tf.train.ExponentialMovingAverage(decay=0.999)
-        test_emas = tf.train.ExponentialMovingAverage(decay=0.999)
+        trainema = tf.train.ExponentialMovingAverage(decay=0.999)
+        testema = tf.train.ExponentialMovingAverage(decay=0.999)
 
         with tf.variable_scope('generator/loss'):
-            g_loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12))
-            g_loss_l1 = tf.reduce_mean(tf.abs(targets - generator))
+            g_loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12), name='gan')
+            g_loss_l1 = tf.reduce_mean(tf.abs(targets - generator), name='l1')
             g_loss = g_loss_gan + self.LAMBDA * g_loss_l1
             tf.summary.scalar('live', g_loss)
-            with tf.name_scope('ema'):
-                ema_g_train_op = train_emas.apply([g_loss])
-                ema_g_test_op = test_emas.apply([g_loss])
-                tf.summary.scalar('train', train_emas.average(g_loss))
-                tf.summary.scalar('test', test_emas.average(g_loss))
 
         with tf.variable_scope('discriminator/loss'):
-            d_loss_real = tf.log(d_real + 1e-12)
-            d_loss_fake = tf.log(1 - d_fake + 1e-12)
+            d_loss_real = tf.log(d_real + 1e-12, name='real')
+            d_loss_fake = tf.log(1 - d_fake + 1e-12, name='fake')
             d_loss = tf.reduce_mean(-(d_loss_real + d_loss_fake))
             tf.summary.scalar('live', d_loss)
-            with tf.name_scope('ema'):
-                ema_d_train_op = train_emas.apply([d_loss])
-                ema_d_test_op = test_emas.apply([d_loss])
-                tf.summary.scalar('train', train_emas.average(d_loss))
-                tf.summary.scalar('test', test_emas.average(d_loss))
 
         def train_generator():
             with tf.variable_scope('generator/optimizer'):
-                with tf.control_dependencies(g_ops + [ema_g_train_op]):
+                g_theta = g_net.trainable_variables()
+                g_ops = g_net.get_collection(tf.GraphKeys.UPDATE_OPS)
+                ema_g_train = trainema.apply([g_loss])
+                with tf.control_dependencies(g_ops + [ema_g_train]):
                     optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
                     return optimizer.minimize(g_loss, self.step, g_theta)
 
         def train_discriminator():
             with tf.variable_scope('discriminator/optimizer'):
-                with tf.control_dependencies(d_ops + [ema_d_train_op]):
+                d_ops = d_net.get_collection(tf.GraphKeys.UPDATE_OPS)
+                d_theta = d_net.trainable_variables()
+                ema_d_train = trainema.apply([d_loss])
+                with tf.control_dependencies(d_ops + [ema_d_train]):
                     optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
                     return optimizer.minimize(d_loss, self.step, d_theta)
 
         # Run train operations alternating.
         train = tf.cond(tf.cast(self.step % 2, tf.bool),
-                        train_generator,
-                        train_discriminator)
+                        train_generator, train_discriminator)
 
-        # Scale generation output from 0 to 1.
-        with tf.variable_scope('testing'):
-            with tf.control_dependencies([ema_g_test_op, ema_d_test_op]):
-                outputs = (generator + 1) / 2
+        # Scale outputs back to 0/1 range and add the test loss ema ops.
+        def test_outputs():
+            ema_g_test = testema.apply([g_loss])
+            ema_d_test = testema.apply([d_loss])
+            with tf.control_dependencies([ema_d_test, ema_g_test]):
+                return (generator + 1) / 2
+        outputs = tf.cond(training, lambda: (generator + 1) / 2, test_outputs)
+
+        tf.summary.scalar('generator/loss/train', trainema.average(g_loss))
+        tf.summary.scalar('generator/loss/test', testema.average(g_loss))
+        tf.summary.scalar('discriminator/loss/train', trainema.average(d_loss))
+        tf.summary.scalar('discriminator/loss/test', testema.average(d_loss))
 
         return Network(outputs, train, None)
