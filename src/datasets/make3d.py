@@ -40,14 +40,14 @@ class Make3D(Dataset):
     # input_shape = (2272, 1704)
     # target_shape = (55, 305)
 
-    def __init__(self, cleanup_on_exit=False):
+    def __init__(self, cleanup_on_exit=False, workers=2):
         for name, url in FILES.items():
             archive, _ = maybe_download(self.directory, url)
             target_dir, extracted = maybe_extract(archive)
             self._tempdirs.append(target_dir)
             if extracted:
                 self._preprocess_data(name, target_dir)
-        super(Make3D, self).__init__(cleanup_on_exit=cleanup_on_exit)
+        super().__init__(cleanup_on_exit=cleanup_on_exit, workers=2)
 
     def _preprocess_data(self, name, directory):
         """Preprocess a part of the 4 way split dataset."""

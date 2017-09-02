@@ -19,9 +19,10 @@ class Dataset:
 
     _tempdirs = []
 
-    def __init__(self, cleanup_on_exit=False):
+    def __init__(self, cleanup_on_exit=False, workers=2):
         if cleanup_on_exit:
             atexit.register(self._cleanup)
+        self.workers = workers
 
         # Create test/train split.
         inputs = glob(str(self.directory / '**/*.image.*'), recursive=True)
@@ -42,24 +43,24 @@ class Dataset:
         getter = iterator.get_next()
         return getter, handle
 
-    def _get_feed(self, attrname, epochs=1, threads=4):
+    def _get_feed(self, attrname, epochs=1):
         data = getattr(self, attrname)
         inputs, targets = [tf.convert_to_tensor(x, tf.string)
                            for x in list(zip(*data))]
         tfdataset = TFDataset.from_tensor_slices((inputs, targets))
         tfdataset = tfdataset.shuffle(buffer_size=10000)
-        tfdataset = tfdataset.map(self._parse_images, num_threads=threads,
+        tfdataset = tfdataset.map(self._parse_images, num_threads=self.workers,
                                   output_buffer_size=self.batchsize * 4)
         tfdataset = tfdataset.batch(self.batchsize)
         tfdataset = tfdataset.repeat(epochs)
         iterator = tfdataset.make_one_shot_iterator()
         return iterator.string_handle()
 
-    def create_test_feed(self, epochs=1, threads=2):
-        return self._get_feed('test_files', epochs, threads)
+    def create_test_feed(self, epochs=1):
+        return self._get_feed('test_files', epochs)
 
-    def create_train_feed(self, epochs=1, threads=2):
-        return self._get_feed('train_files', epochs, threads)
+    def create_train_feed(self, epochs=1):
+        return self._get_feed('train_files', epochs)
 
     def _cleanup(self):
         """Delete temporary folders on exit."""
@@ -93,11 +94,11 @@ class Dataset:
 
     @classmethod
     def _parse_image(cls, filepath, shape):
-        """Read image from file, resize it and scale its values from -1 to 1"""
+        """Read image from file, resize it and scale its values from 0 to 1."""
         read = tf.read_file(filepath)
         decoded = tf.image.decode_png(read, channels=shape[-1])
         resized = tf.image.resize_images(decoded, shape[:2])
-        scaled = (tf.image.convert_image_dtype(resized, tf.float32) - .5) * 2
+        scaled = tf.image.convert_image_dtype(resized, tf.float32)
         return scaled
 
     def view(self):

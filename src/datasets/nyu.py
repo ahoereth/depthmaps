@@ -28,12 +28,12 @@ class Nyu(Dataset):
     input_shape = (480, 320)
     target_shape = (55 * 480 // 320, 55)
 
-    def __init__(self, cleanup_on_exit=False):
+    def __init__(self, cleanup_on_exit=False, workers=2):
         path, _ = maybe_download(DATA_DIR, URL)
         self._tempdirs.append(path)
         if not self.directory.exists():
             self._extract_mat(self.directory, path)
-        super(Nyu, self).__init__(cleanup_on_exit=cleanup_on_exit)
+        super().__init__(cleanup_on_exit=cleanup_on_exit, workers=2)
 
     def _extract_mat(self, target_dir, mat_path):
         """Extract input and target images from mat file."""
