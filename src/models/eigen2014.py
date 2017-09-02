@@ -19,7 +19,11 @@ class Eigen2014(Model):
     batchsize = 32
 
     def build_network(self, inputs, targets, training=False):
-        """Create a coarse/fine convolutional neural network."""
+        """Create a coarse/fine convolutional neural network.
+
+        Note: inputs and targets are expected to be scaled from 0 to 1 when
+        being passed to this network.
+        """
         with tf.variable_scope('coarse'):
             coarse = tf.layers.conv2d(inputs, 96, 11, activation=tf.nn.relu,
                                       strides=4)
@@ -45,7 +49,10 @@ class Eigen2014(Model):
             fine = tf.concat([fine, coarse], 3)  # Coarse results enter!!
             fine = tf.layers.conv2d(fine, 64, 5, activation=tf.nn.relu,
                                     padding='same')
-            outputs = tf.layers.conv2d(fine, 1, 5, padding='same')
+            # Using sigmoid here which the paper does not because the targets
+            # are scaled from 0 to 1 the same way the inputs are.
+            outputs = tf.layers.conv2d(fine, 1, 5, padding='same',
+                                       activation=tf.nn.sigmoid)
         with tf.variable_scope('loss'):
             tf.losses.mean_squared_error(targets, outputs)
             loss = tf.losses.get_total_loss()

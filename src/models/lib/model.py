@@ -24,7 +24,7 @@ class Model:
 
         self.dataset = dataset
 
-        self.step = tf.train.create_global_step()
+        self.step = tf.train.get_or_create_global_step()
 
         self.training = tf.placeholder_with_default(False, None)
 

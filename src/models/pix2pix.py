@@ -81,48 +81,58 @@ class Pix2Pix(Model):
             (tf.Tensor): Tanh network output, single channel shaped as input.
             (List[tf.Operation]): Batch normalization update operations.
         """
-        with tf.variable_scope('generator') as scope:
-            with tf.variable_scope('encoder'):  # 256x256
-                net = images
-                enc0 = cls.conv2d(net, 64)  # 128x128
-                enc1 = cls.conv2d(enc0, 128, norm=training)  # 64x64
-                enc2 = cls.conv2d(enc1, 256, norm=training)  # 32x32
-                enc3 = cls.conv2d(enc2, 512, norm=training)  # 16x16
-                enc4 = cls.conv2d(enc3, 512, norm=training)  # 8x8
-                enc5 = cls.conv2d(enc4, 512, norm=training)  # 4x4
-                enc6 = cls.conv2d(enc5, 512, norm=training)  # 2x2x512
-                enc7 = cls.conv2d(enc6, 512, norm=training)  # 1x1x512
-            with tf.variable_scope('decoder'):
-                dec = cls.conv2d_transpose(enc7, 512, norm=training)  # 2x2
-                dec = tf.layers.dropout(dec, .5)  # 512
-                dec = tf.concat([dec, enc6], axis=-1)  # 1024
-                dec = cls.conv2d_transpose(dec, 512, norm=training)  # 4x4
-                dec = tf.layers.dropout(dec, .5)
-                dec = tf.concat([dec, enc5], axis=-1)  # 1024
-                dec = cls.conv2d_transpose(dec, 512, norm=training)  # 8x8
-                dec = tf.layers.dropout(dec, .5)
-                dec = tf.concat([dec, enc4], axis=-1)  # 1024
-                dec = cls.conv2d_transpose(dec, 512, norm=training)  # 16x16
-                dec = tf.concat([dec, enc3], axis=-1)  # 1024
-                dec = cls.conv2d_transpose(dec, 256, norm=training)  # 32x32
-                dec = tf.concat([dec, enc2], axis=-1)  # 512
-                dec = cls.conv2d_transpose(dec, 128, norm=training)  # 64x64
-                dec = tf.concat([dec, enc1], axis=-1)  # 256
-                dec = cls.conv2d_transpose(dec, 64, norm=training)  # 128x128
-                dec = tf.concat([dec, enc0], axis=-1)  # 128
-                out = cls.conv2d_transpose(dec, 1,
-                                           activation=tf.nn.tanh)  # 256x256
-                theta = scope.trainable_variables()
-                ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
-            return out, theta, ops
+        with tf.variable_scope('encoder'):  # 256x256
+            net = images
+            enc0 = cls.conv2d(net, 64)  # 128x128
+            enc1 = cls.conv2d(enc0, 128, norm=training)  # 64x64
+            enc2 = cls.conv2d(enc1, 256, norm=training)  # 32x32
+            enc3 = cls.conv2d(enc2, 512, norm=training)  # 16x16
+            enc4 = cls.conv2d(enc3, 512, norm=training)  # 8x8
+            enc5 = cls.conv2d(enc4, 512, norm=training)  # 4x4
+            enc6 = cls.conv2d(enc5, 512, norm=training)  # 2x2x512
+            enc7 = cls.conv2d(enc6, 512, norm=training)  # 1x1x512
+        with tf.variable_scope('decoder'):
+            dec = cls.conv2d_transpose(enc7, 512, norm=training)  # 2x2
+            dec = tf.layers.dropout(dec, .5)  # 512
+            dec = tf.concat([dec, enc6], axis=-1)  # 1024
+            dec = cls.conv2d_transpose(dec, 512, norm=training)  # 4x4
+            dec = tf.layers.dropout(dec, .5)
+            dec = tf.concat([dec, enc5], axis=-1)  # 1024
+            dec = cls.conv2d_transpose(dec, 512, norm=training)  # 8x8
+            dec = tf.layers.dropout(dec, .5)
+            dec = tf.concat([dec, enc4], axis=-1)  # 1024
+            dec = cls.conv2d_transpose(dec, 512, norm=training)  # 16x16
+            dec = tf.concat([dec, enc3], axis=-1)  # 1024
+            dec = cls.conv2d_transpose(dec, 256, norm=training)  # 32x32
+            dec = tf.concat([dec, enc2], axis=-1)  # 512
+            dec = cls.conv2d_transpose(dec, 128, norm=training)  # 64x64
+            dec = tf.concat([dec, enc1], axis=-1)  # 256
+            dec = cls.conv2d_transpose(dec, 64, norm=training)  # 128x128
+            dec = tf.concat([dec, enc0], axis=-1)  # 128
+            out = cls.conv2d_transpose(dec, 1,
+                                       activation=tf.nn.tanh)  # 256x256
+        return out
 
+        # print(get_available_gpus())
     def build_network(self, inputs, targets, training=False):
-        """Create a generative adversarial image generation network."""
-        inputs = inputs * 2 - 1  # scale from -1 to 1
+        """Create a generative adversarial image generation network.
+
+        Note: inputs and targets are expected to be scaled from 0 to 1 when
+        being passed to this network. This method handles scaling them to
+        the tanh range and back.
+        """
+        # Scale inputs and targets from -1 to 1.
+        inputs = (inputs - .5) * 2
+        targets = (targets - .5) * 2
 
         # Create generator.
-        generator, g_theta, g_ops = self.make_generator(inputs, training)
-        tf.contrib.layers.summarize_tensors(g_ops)
+        with tf.variable_scope('generation') as scope:
+            generator = self.make_generator(inputs, training)
+            g_theta = scope.trainable_variables()
+            tf.contrib.layers.summarize_tensors(g_theta)
+            g_ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
+            samples = (generator + 1) / 2
+            tf.summary.image('generator', samples)
 
         # Create the two discriminator graphs, once with the ground truths
         # and once the generated depth maps as inputs.
