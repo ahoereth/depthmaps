@@ -7,8 +7,7 @@ except ImportError:
 else:
     gui = True
 
-from lib import Dataviewer
-from datasets import Make3D, Nyu
+from datasets import Make3D, Nyu, Dataviewer
 from models import Simple, Eigen2014, Pix2Pix
 
 

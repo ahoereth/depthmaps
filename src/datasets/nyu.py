@@ -14,7 +14,10 @@ import numpy as np
 from scipy import misc as spmisc
 # from PIL import Image
 
-from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
+if __name__ == '__main__':
+    from lib import DATA_DIR, Dataset, maybe_extract, maybe_download
+else:
+    from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
 
 
 URL = 'http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled.mat'
@@ -49,3 +52,7 @@ class Nyu(Dataset):
                     .save(target_path.with_suffix('.image.png'))
                 spmisc.toimage(depth).resize(self.target_shape) \
                     .save(target_path.with_suffix('.depth.png'))
+
+
+if __name__ == '__main__':
+    Nyu().view()

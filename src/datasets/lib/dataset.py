@@ -99,3 +99,22 @@ class Dataset:
         resized = tf.image.resize_images(decoded, shape[:2])
         scaled = (tf.image.convert_image_dtype(resized, tf.float32) - .5) * 2
         return scaled
+
+    def view(self):
+        """Display samples from dataset using dataviewer."""
+        import numpy as np
+        from PIL import Image
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            print('matplotlib not available.')
+            return
+        from . import Dataviewer
+
+        samples = random.sample(self.train_files, k=100)
+        images = [(Image.open(a), Image.open(b)) for a, b in samples]
+        images = [(a, b.resize(a.size)) for a, b in images]
+        Dataviewer(images, name=self.__class__.__name__,
+                   keys=['image', 'depth'],
+                   cmaps={'depth': 'gray'})
+        plt.show()

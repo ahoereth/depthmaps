@@ -19,7 +19,10 @@ from pathlib import Path
 from scipy import misc as spmisc, io as spio
 from PIL import Image
 
-from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
+if __name__ == '__main__':
+    from lib import DATA_DIR, Dataset, maybe_extract, maybe_download
+else:
+    from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
 
 
 FILES = {
@@ -74,3 +77,7 @@ class Make3D(Dataset):
                     target = (path.parent / name).with_suffix('.depth.jpg')
                     img.save(target, 'JPEG')
                 os.remove(str(path))
+
+
+if __name__ == '__main__':
+    Make3D().view()
