@@ -150,7 +150,8 @@ class Pix2Pix(Model):
             g_loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12))
             g_loss_l1 = tf.reduce_mean(tf.abs(targets - generator))
             g_loss = g_loss_gan + self.LAMBDA * g_loss_l1
-            with tf.name_scope('summaries'):
+            tf.summary.scalar('live', g_loss)
+            with tf.name_scope('ema'):
                 ema_g_train_op = train_emas.apply([g_loss])
                 ema_g_test_op = test_emas.apply([g_loss])
                 tf.summary.scalar('train', train_emas.average(g_loss))
@@ -160,7 +161,8 @@ class Pix2Pix(Model):
             d_loss_real = tf.log(d_real + 1e-12)
             d_loss_fake = tf.log(1 - d_fake + 1e-12)
             d_loss = tf.reduce_mean(-(d_loss_real + d_loss_fake))
-            with tf.name_scope('summaries'):
+            tf.summary.scalar('live', d_loss)
+            with tf.name_scope('ema'):
                 ema_d_train_op = train_emas.apply([d_loss])
                 ema_d_test_op = test_emas.apply([d_loss])
                 tf.summary.scalar('train', train_emas.average(d_loss))
