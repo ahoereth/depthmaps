@@ -98,7 +98,7 @@ class Dataset:
         read = tf.read_file(filepath)
         decoded = tf.image.decode_png(read, channels=shape[-1])
         resized = tf.image.resize_images(decoded, shape[:2])
-        scaled = tf.image.convert_image_dtype(resized, tf.float32)
+        scaled = tf.image.convert_image_dtype(resized, tf.float32) / 255
         return scaled
 
     def view(self):

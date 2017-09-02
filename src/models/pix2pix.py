@@ -122,12 +122,15 @@ class Pix2Pix(Model):
         the tanh range and back.
         """
         # Scale inputs and targets from -1 to 1.
-        inputs = (inputs - .5) * 2
-        targets = (targets - .5) * 2
+        inputs = inputs * 2 - 1
+        targets = targets * 2 - 1
+        tf.summary.histogram('inputs', inputs)
+        tf.summary.histogram('targets', targets)
 
         # Create generator.
         with tf.variable_scope('generation') as scope:
             generator = self.make_generator(inputs, training)
+            tf.summary.histogram('rawout', generator)
             g_theta = scope.trainable_variables()
             tf.contrib.layers.summarize_tensors(g_theta)
             g_ops = scope.get_collection(tf.GraphKeys.UPDATE_OPS)
