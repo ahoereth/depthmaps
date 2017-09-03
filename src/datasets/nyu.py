@@ -25,15 +25,16 @@ URL = 'http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled
 
 class Nyu(Dataset):
     directory = DATA_DIR / 'nyu'
+    predefined_split_available = False
     input_shape = (480, 320)
     target_shape = (55 * 480 // 320, 55)
 
-    def __init__(self, cleanup_on_exit=False, workers=2):
+    def __init__(self, *args, **kwargs):
         path, _ = maybe_download(DATA_DIR, URL)
         self._tempdirs.append(path)
         if not self.directory.exists():
             self._extract_mat(self.directory, path)
-        super().__init__(cleanup_on_exit=cleanup_on_exit, workers=2)
+        super().__init__(*args, **kwargs)
 
     def _extract_mat(self, target_dir, mat_path):
         """Extract input and target images from mat file."""

@@ -47,17 +47,19 @@ FILES = {
 
 class Make3D2(Dataset):
     directory = DATA_DIR / 'make3d2'
+    predefined_split_available = True
     input_shape = (480, 320)
     target_shape = (55 * 480 // 320, 55)
 
-    def __init__(self, cleanup_on_exit=False, workers=2):
+    def __init__(self, *args, **kwargs):
         for name, url in FILES.items():
-            archive, _ = maybe_download(self.directory, url)
+            group = name.split('_')[0]
+            archive, _ = maybe_download(self.directory / group, url)
             target_dir, extracted = maybe_extract(archive)
             self._tempdirs.append(target_dir)
             if extracted:
                 self._preprocess_data(name, target_dir)
-        super().__init__(cleanup_on_exit=cleanup_on_exit, workers=2)
+        super().__init__(*args, **kwargs)
 
     def _preprocess_data(self, name, directory):
         """Preprocess a part of the 4 way split dataset."""
@@ -65,18 +67,19 @@ class Make3D2(Dataset):
             for path in glob(str(directory / '**/*.jpg'), recursive=True):
                 try:
                     with Image.open(path) as img:
-                        img = img.resize(self.input_shape).rotate(-90)
+                        if not name.startswith('feature'):
+                            img = img.rotate(-90, 0, 1)
+                        img = img.resize(self.input_shape)
                 except (ValueError, OSError):
                     print("Couldn't open {}".format(path))
                 else:
                     path = Path(path)
-                    name = path.name.split('img-')[1]
-                    target = (path.parent / name).with_suffix('.image.png')
+                    filename = path.name.split('img-')[1]
+                    target = (path.parent / filename).with_suffix('.image.png')
                     img.save(target, 'PNG')
                 os.remove(str(path))
         elif name.endswith('targets'):
             for path in glob(str(directory / '**/*.mat'), recursive=True):
-                print(path)
                 try:
                     mat = spio.loadmat(path)['depthMap']
                     img = spmisc.toimage(mat).resize(self.target_shape)

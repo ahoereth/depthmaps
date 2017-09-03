@@ -48,19 +48,21 @@ FILES = {
 
 class Make3D(Dataset):
     directory = DATA_DIR / 'make3d'
+    predefined_split_available = True
     input_shape = (480, 320)
     target_shape = (55 * 480 // 320, 55)
     # input_shape = (2272, 1704)
     # target_shape = (55, 305)
 
-    def __init__(self, cleanup_on_exit=False, workers=2):
+    def __init__(self, *args, **kwargs):
         for name, url in FILES.items():
-            archive, _ = maybe_download(self.directory, url)
+            group = name.split('_')[0]
+            archive, _ = maybe_download(self.directory / group, url)
             target_dir, extracted = maybe_extract(archive)
             self._tempdirs.append(target_dir)
             if extracted:
                 self._preprocess_data(name, target_dir)
-        super().__init__(cleanup_on_exit=cleanup_on_exit, workers=2)
+        super().__init__(*args, **kwargs)
 
     def _preprocess_data(self, name, directory):
         """Preprocess a part of the 4 way split dataset."""
@@ -73,17 +75,17 @@ class Make3D(Dataset):
                     print("Couldn't open {}".format(path))
                 else:
                     path = Path(path)
-                    name = path.name.split('img-')[1]
-                    if name.startswith('10.21'):
-                        name = name[5:]
-                    target = (path.parent / name).with_suffix('.image.png')
+                    filename = path.name.split('img-')[1]
+                    if filename.startswith('10.21'):
+                        filename = filename[5:]
+                    target = (path.parent / filename).with_suffix('.image.png')
                     img.save(target, 'PNG')
                 os.remove(str(path))
         elif name.endswith('targets'):
             for path in glob(str(directory / '**/*.mat'), recursive=True):
                 try:
                     mat = spio.loadmat(path)['Position3DGrid'][..., 3]
-                    img = spmisc.toimage(mat)
+                    img = spmisc.toimage(mat).resize(self.target_shape)
                 except ValueError:
                     print("Couldn't open {}".format(path))
                 else:

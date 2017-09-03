@@ -14,23 +14,37 @@ DATA_DIR = Path.cwd() / 'tmp'
 
 class Dataset:
     directory = DATA_DIR
+    predefined_split_available = False
     input_shape = (0, 0)
     target_shape = (0, 0)
 
     _tempdirs = []
 
-    def __init__(self, cleanup_on_exit=False, workers=2):
+    def __init__(self, cleanup_on_exit=False, use_predefined_split=False,
+                 test_split=10, workers=2):
         if cleanup_on_exit:
             atexit.register(self._cleanup)
         self.workers = workers
 
-        # Create test/train split.
-        inputs = glob(str(self.directory / '**/*.image.*'), recursive=True)
-        targets = glob(str(self.directory / '**/*.depth.*'), recursive=True)
-        pairs = self._match_pairs(inputs, targets)
-        perm = random.sample(range(len(pairs)), len(pairs))
-        self.train_files = [pairs[i] for i in perm[len(pairs) // 10:]]
-        self.test_files = [pairs[i] for i in perm[:len(pairs) // 10]]
+        d = self.directory
+        if use_predefined_split:
+            # Use original test/train split.
+            assert self.predefined_split_available is True
+            inputs = glob(str(d / 'test/**/*.image.*'), recursive=True)
+            targets = glob(str(d / 'test/**/*.depth.*'), recursive=True)
+            self.test_files = self._match_pairs(inputs, targets)
+            inputs = glob(str(d / 'train/**/*.image.*'), recursive=True)
+            targets = glob(str(d / 'train/**/*.depth.*'), recursive=True)
+            self.train_files = self._match_pairs(inputs, targets)
+        else:
+            # Create test/train split.
+            inputs = glob(str(d / '**/*.image.*'), recursive=True)
+            targets = glob(str(d / '**/*.depth.*'), recursive=True)
+            pairs = self._match_pairs(inputs, targets)
+            size = len(pairs)
+            perm = random.sample(range(size), size)
+            self.train_files = [pairs[i] for i in perm[size // test_split:]]
+            self.test_files = [pairs[i] for i in perm[:size // test_split]]
 
     def finalize(self, shapes, batchsize):
         assert not hasattr(self, 'output_shapes')
@@ -48,9 +62,10 @@ class Dataset:
         inputs, targets = [tf.convert_to_tensor(x, tf.string)
                            for x in list(zip(*data))]
         tfdataset = TFDataset.from_tensor_slices((inputs, targets))
-        tfdataset = tfdataset.shuffle(buffer_size=10000)
+        buffersize = self.batchsize * self.workers
         tfdataset = tfdataset.map(self._parse_images, num_threads=self.workers,
-                                  output_buffer_size=self.batchsize * 4)
+                                  output_buffer_size=buffersize)
+        tfdataset = tfdataset.shuffle(buffer_size=10000)
         tfdataset = tfdataset.batch(self.batchsize)
         tfdataset = tfdataset.repeat(epochs)
         iterator = tfdataset.make_one_shot_iterator()
