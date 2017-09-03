@@ -10,6 +10,7 @@
 import tensorflow as tf
 
 from .lib import Model, Network, lrelu, soft_labels_like
+from .lib import get_available_gpus, average_gradients
 
 
 class Pix2Pix(Model):
@@ -17,7 +18,7 @@ class Pix2Pix(Model):
 
     input_shape = (256, 256, 3)
     target_shape = (256, 256, 1)
-    batchsize = 1
+    batchsize = max(len(get_available_gpus()), 1)
 
     @staticmethod
     def conv2d(inputs, num_outputs, kernel_size=(4, 4), strides=2,
@@ -118,36 +119,25 @@ class Pix2Pix(Model):
         tf.summary.histogram('output', out)
         return out  # 256x256
 
-        # print(get_available_gpus())
-    def build_network(self, inputs, targets, training=False):
-        """Create a generative adversarial image generation network.
-
-        Note: inputs and targets are expected to be scaled from 0 to 1 when
-        being passed to this network. This method handles scaling them to
-        the tanh range and back.
-        """
+    def build_tower(self, inputs, targets, training):
         # Scale inputs and targets from -1 to 1.
         inputs = tf.subtract(inputs * 2, 1, name='scaled_inputs')
         targets = tf.subtract(targets * 2, 1, name='scaled_targets')
-        tf.summary.histogram('input', inputs)
-        tf.summary.histogram('target', targets)
+        tf.summary.histogram('inputs/scaled', inputs)
+        tf.summary.histogram('targets/scaled', targets)
 
         # Create generator.
-        with tf.variable_scope('generator/net') as g_net:
+        with tf.variable_scope('generator/net') as g_scope:
             generator = self.make_generator(inputs)
 
         # Create the two discriminator graphs, once with the ground truths
         # and once the generated depth maps as inputs.
-        with tf.variable_scope('discriminator') as d_net:  # Real
+        with tf.variable_scope('discriminator') as d_scope:  # Real
             real = tf.concat([inputs, targets], axis=-1, name='input/real')
             d_real = self.make_discriminator(real)
         with tf.variable_scope('discriminator', reuse=True):  # Fake
             fake = tf.concat([inputs, generator], axis=-1, name='input/fake')
             d_fake = self.make_discriminator(fake)
-
-        # Keep moving averages over the training and testing loss individually.
-        trainema = tf.train.ExponentialMovingAverage(decay=0.999)
-        testema = tf.train.ExponentialMovingAverage(decay=0.99)
 
         with tf.variable_scope('generator/loss'):
             g_loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12), name='gan')
@@ -161,40 +151,82 @@ class Pix2Pix(Model):
             d_loss = tf.reduce_mean(-(d_loss_real + d_loss_fake))
             tf.summary.scalar('live', d_loss)
 
-        def train_generator():
-            with tf.variable_scope('generator/optimizer'):
-                g_theta = g_net.trainable_variables()
-                ema_g_train = trainema.apply([g_loss])
-                with tf.control_dependencies([ema_g_train]):
-                    optimizer = tf.train.AdamOptimizer(1e-4)
-                    return optimizer.minimize(g_loss, self.step, g_theta)
+        return generator, (g_loss, d_loss), (g_scope, d_scope)
 
-        def train_discriminator():
-            with tf.variable_scope('discriminator/optimizer'):
-                d_theta = d_net.trainable_variables()
-                ema_d_train = trainema.apply([d_loss])
-                with tf.control_dependencies([ema_d_train]):
-                    optimizer = tf.train.AdamOptimizer(1e-4)
-                    return optimizer.minimize(d_loss, self.step, d_theta)
+    def build_network(self, inputs, targets, training):
+        """Create a generative adversarial image generation network.
 
-        # Run train operations alternating.
-        train = tf.cond(tf.cast(self.step % 2, tf.bool),
-                        train_generator, train_discriminator)
+        Note: inputs and targets are expected to be scaled from 0 to 1 when
+        being passed to this network. This method handles scaling them to
+        the tanh range and back.
+        """
+        print(self.batchsize)
+        print(get_available_gpus())
+
+        # Keep moving averages over the training and testing loss individually.
+        trainema = tf.train.ExponentialMovingAverage(decay=0.999)
+        testema = tf.train.ExponentialMovingAverage(decay=0.99)
+
+        g_opt = tf.train.AdamOptimizer(1e-4)
+        d_opt = tf.train.AdamOptimizer(1e-4)
+
+        gpu_count = len(get_available_gpus())
+        all_inputs, all_targets, all_gens = [], [], []
+        g_grads, d_grads = [], []
+        with tf.variable_scope(tf.get_variable_scope()):
+            device_type = 'gpu' if gpu_count > 0 else 'cpu'
+            for i in range(self.batchsize):
+                with tf.device('/{}:{}'.format(device_type, i)):
+                    # Get next batch from iterator.
+                    tower_input = tf.expand_dims(inputs[i], 0)
+                    tower_target = tf.expand_dims(targets[i], 0)
+
+                    gen, losses, scopes = self.build_tower(tower_input,
+                                                           tower_target,
+                                                           training)
+                    all_gens.append(gen)
+                    g_scope, d_scope = scopes
+                    g_loss, d_loss = losses
+                    g_theta = g_scope.trainable_variables()
+                    d_theta = d_scope.trainable_variables()
+                    g_grads.append(g_opt.compute_gradients(g_loss, g_theta))
+                    d_grads.append(d_opt.compute_gradients(d_loss, d_theta))
+
+                    tf.get_variable_scope().reuse_variables()
+
+                    # summaries = tf.get_collection(tf.GraphKeys.SUMMARIES,
+                    #                               scope)
+
+        # Collect all the inputs and targets into stacks for batch evaluation.
+        generated = tf.concat(all_gens, axis=0)
+
+        d_grads = average_gradients(d_grads)
+        g_grads = average_gradients(g_grads)
+
+        d_ops = d_scope.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(d_ops):
+            d_train = d_opt.apply_gradients(d_grads)
+
+        g_ops = g_scope.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(g_ops):
+            g_train = g_opt.apply_gradients(g_grads, self.step)
+
+        train = tf.group(d_train, g_train)
 
         # Scale outputs back to 0/1 range and add the test loss ema ops.
         def test_outputs():
             ema_g_test = testema.apply([g_loss])
             ema_d_test = testema.apply([d_loss])
             with tf.control_dependencies([ema_d_test, ema_g_test]):
-                return (generator + 1) / 2
-        outputs = tf.cond(training, lambda: (generator + 1) / 2, test_outputs)
+                return (generated + 1) / 2
+        outputs = tf.cond(training, lambda: (generated + 1) / 2, test_outputs)
 
         # Select the correct loss ema to summarize.
-        g_loss_ema = tf.cond(training, lambda: trainema.average(g_loss),
-                             lambda: testema.average(g_loss))
-        d_loss_ema = tf.cond(training, lambda: trainema.average(d_loss),
-                             lambda: testema.average(d_loss))
-        tf.summary.scalar('generator/loss/ema', g_loss_ema)
-        tf.summary.scalar('discriminator/loss/ema', d_loss_ema)
+        # g_loss_ema = tf.cond(training, lambda: trainema.average(g_loss),
+        #                      lambda: testema.average(g_loss))
+        # d_loss_ema = tf.cond(training, lambda: trainema.average(d_loss),
+        #                      lambda: testema.average(d_loss))
+        # tf.summary.scalar('generator/loss/ema', g_loss_ema)
+        # tf.summary.scalar('discriminator/loss/ema', d_loss_ema)
 
         return Network(outputs, train, None)

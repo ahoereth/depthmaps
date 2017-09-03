@@ -35,21 +35,20 @@ class Model:
         self.inputs, self.targets = feed
 
         # Create the network.
-        self.net = self.build_network(self.inputs, self.targets,
-                                      training=self.training)
+        self.net = self.build_network(self.inputs, self.targets, self.training)
 
         tf.summary.image('inputs', self.inputs)
         tf.summary.image('targets', self.targets)
         tf.summary.image('outputs', self.net.output)
         self.summaries = tf.summary.merge_all()
 
-    def build_network(self, inputs, targets, training=False):
+    def build_network(self, inputs, targets, training):
         """Create the neural network."""
         raise NotImplementedError
 
     def train(self, epochs=1):
         handle_op = self.dataset.create_train_feed(epochs)
-        test_handle_op = self.dataset.create_train_feed(epochs=-1)
+        test_handle_op = self.dataset.create_test_feed(epochs=-1)
 
         test_logs = str(self.logdir / 'test')
         train_logs = str(self.logdir / 'train')

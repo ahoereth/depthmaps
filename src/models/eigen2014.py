@@ -18,7 +18,7 @@ class Eigen2014(Model):
     target_shape = (74, 55, 1)
     batchsize = 32
 
-    def build_network(self, inputs, targets, training=False):
+    def build_network(self, inputs, targets, training):
         """Create a coarse/fine convolutional neural network.
 
         Note: inputs and targets are expected to be scaled from 0 to 1 when
