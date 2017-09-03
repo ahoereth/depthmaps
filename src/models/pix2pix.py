@@ -48,14 +48,14 @@ class Pix2Pix(Model):
         """Discriminator.
 
         Args:
-            images: Stack of original and target images, either from generator
-                or ground truths. Shape (BATCH, 256, 256, (input_c + output_c))
-            training : True when in training, False when in testing step.
+            images (tf.Tensor): Stack of original and target images, either
+                from generator or ground truths.
+                Shape (BATCH, 256, 256, (input_c + output_c))
+            training (tf.Tensor): True when in training,
+                False when in testing step.
 
         Returns:
             (tf.Tensor): Sigmoid network output, single scalar in [0, 1].
-            (tf.Tensor): Linear network output, single scalar.
-            (List[tf.Operation]): Batch normalization update operations.
         """
         net = cls.conv2d(images, 64)  # 128x128
         net = cls.conv2d(net, 128, norm=training)  # 64x64
@@ -69,14 +69,13 @@ class Pix2Pix(Model):
         """Generator.
 
         Args:
-            images: Input images, either from generator or ground truths.
-                Shape (BATCH, 256, 256, input_c)
+            images (tf.Tensor) : Input images, either from generator or ground
+                truths. Shape (BATCH, 256, 256, input_c)
             training (tf.Tensor): True when in training,
                                   False when in testing step.
 
         Returns:
             (tf.Tensor): Tanh network output, single channel shaped as input.
-            (List[tf.Operation]): Batch normalization update operations.
         """
         with tf.variable_scope('encoder'):  # 256x256
             net = images
@@ -140,7 +139,7 @@ class Pix2Pix(Model):
 
         # Keep moving averages over the training and testing loss individually.
         trainema = tf.train.ExponentialMovingAverage(decay=0.999)
-        testema = tf.train.ExponentialMovingAverage(decay=0.999)
+        testema = tf.train.ExponentialMovingAverage(decay=0.99)
 
         with tf.variable_scope('generator/loss'):
             g_loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12), name='gan')
@@ -160,7 +159,7 @@ class Pix2Pix(Model):
                 g_ops = g_net.get_collection(tf.GraphKeys.UPDATE_OPS)
                 ema_g_train = trainema.apply([g_loss])
                 with tf.control_dependencies(g_ops + [ema_g_train]):
-                    optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
+                    optimizer = tf.train.AdamOptimizer(1e-4)
                     return optimizer.minimize(g_loss, self.step, g_theta)
 
         def train_discriminator():
@@ -169,7 +168,7 @@ class Pix2Pix(Model):
                 d_theta = d_net.trainable_variables()
                 ema_d_train = trainema.apply([d_loss])
                 with tf.control_dependencies(d_ops + [ema_d_train]):
-                    optimizer = tf.train.AdamOptimizer(1e-4, beta1=0.5)
+                    optimizer = tf.train.AdamOptimizer(1e-4)
                     return optimizer.minimize(d_loss, self.step, d_theta)
 
         # Run train operations alternating.
