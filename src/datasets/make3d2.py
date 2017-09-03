@@ -1,4 +1,4 @@
-"""Downloads and extracts the Make3D-2 depth image dataset.
+"""Make3D-2 depth image dataset.
 
 @article{Saxena2009,
   title = {Make3d: Learning 3d scene structure from a single still image},
@@ -29,10 +29,7 @@ from pathlib import Path
 from scipy import misc as spmisc, io as spio
 from PIL import Image
 
-if __name__ == '__main__':
-    from lib import DATA_DIR, Dataset, maybe_extract, maybe_download
-else:
-    from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
+from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
 
 
 FILES = {
@@ -94,4 +91,5 @@ class Make3D2(Dataset):
 
 
 if __name__ == '__main__':
+    """Take a look at the data using `python -m datasets.make3d2`."""
     Make3D2().view()

@@ -1,4 +1,4 @@
-"""Downloads and extracts the Make3D depth image dataset.
+"""Make3D depth image dataset.
 
 https://cs.stanford.edu/group/reconstruction3d/Readme
 
@@ -32,10 +32,7 @@ from pathlib import Path
 from scipy import misc as spmisc, io as spio
 from PIL import Image
 
-if __name__ == '__main__':
-    from lib import DATA_DIR, Dataset, maybe_extract, maybe_download
-else:
-    from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
+from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
 
 
 FILES = {
@@ -99,4 +96,5 @@ class Make3D(Dataset):
 
 
 if __name__ == '__main__':
+    """Take a look at the data using `python -m datasets.make3d`."""
     Make3D().view()

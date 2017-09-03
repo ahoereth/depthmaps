@@ -100,7 +100,8 @@ class Dataviewer:
                 self.current = (self.current + 1) % len(self.dataset)
 
         self.figure.suptitle('Showing samples {} to {}'
-                             .format(first, self.current - 1))
+                             .format(first,
+                                     (self.current - 1) % len(self.dataset)))
         self.figure.canvas.draw()
 
     def __key_press_event(self, event):

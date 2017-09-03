@@ -7,11 +7,11 @@ except ImportError:
 else:
     gui = True
 
-from datasets import Make3D, Make3D2, Nyu, Dataviewer
+from datasets import Merged, Make3D, Make3D2, Nyu, Dataviewer
 from models import Simple, Eigen2014, Pix2Pix
 
 
-dataset = Make3D2(workers=6, use_predefined_split=True)
+dataset = Merged(workers=6)
 model = Pix2Pix(dataset)
 model.train(epochs=400)
 
