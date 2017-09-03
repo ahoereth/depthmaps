@@ -184,9 +184,12 @@ class Pix2Pix(Model):
                 return (generator + 1) / 2
         outputs = tf.cond(training, lambda: (generator + 1) / 2, test_outputs)
 
-        tf.summary.scalar('generator/loss/train', trainema.average(g_loss))
-        tf.summary.scalar('generator/loss/test', testema.average(g_loss))
-        tf.summary.scalar('discriminator/loss/train', trainema.average(d_loss))
-        tf.summary.scalar('discriminator/loss/test', testema.average(d_loss))
+        # Select the correct loss ema to summarize.
+        g_loss_ema = tf.cond(training, lambda: trainema.average(g_loss),
+                             lambda: testema.average(g_loss))
+        d_loss_ema = tf.cond(training, lambda: trainema.average(d_loss),
+                             lambda: testema.average(d_loss))
+        tf.summary.scalar('generator/loss/ema', g_loss_ema)
+        tf.summary.scalar('discriminator/loss/ema', d_loss_ema)
 
         return Network(outputs, train, None)

@@ -6,6 +6,7 @@ from threading import Thread
 
 import tensorflow as tf
 
+from .feed_summary_saver_hook import FeedSummarySaverHook
 from .utils import to_float
 
 
@@ -37,46 +38,47 @@ class Model:
         self.net = self.build_network(self.inputs, self.targets,
                                       training=self.training)
 
+        tf.summary.image('inputs', self.inputs)
+        tf.summary.image('targets', self.targets)
+        tf.summary.image('outputs', self.net.output)
         self.summaries = tf.summary.merge_all()
-
-        # Keep moving averages for the loss.
-        # train_ema = tf.train.ExponentialMovingAverage(decay=0.999)
-        # test_ema = tf.train.ExponentialMovingAverage(decay=0.999)
-        # train_ema_op = train_ema.apply(to_tuple(self.net.loss))
-        # test_ema_op = test_ema.apply(to_tuple(self.test_net.loss))
 
     def build_network(self, inputs, targets, training=False):
         """Create the neural network."""
         raise NotImplementedError
 
-    def _train(self, sess, handle):
-        """Train the model."""
-        while not sess.should_stop():
-            try:
-                sess.run(self.net.train, {self.feedhandle: handle,
-                                          self.training: True})
-            except tf.errors.OutOfRangeError:
-                break
-
-    def train(self, epochs=1, workers=2):
+    def train(self, epochs=1):
         handle_op = self.dataset.create_train_feed(epochs)
+        test_handle_op = self.dataset.create_train_feed(epochs=-1)
 
-        summary_hook = tf.train.SummarySaverHook(output_dir=str(self.logdir),
-                                                 summary_op=self.summaries,
-                                                 save_secs=20)
-        step_hook = tf.train.StepCounterHook(output_dir=str(self.logdir),
-                                             every_n_steps=100)
-        hooks = [summary_hook, step_hook]
+        test_logs = str(self.logdir / 'test')
+        train_logs = str(self.logdir / 'train')
 
-        kwargs = dict(checkpoint_dir=str(self.logdir), hooks=hooks)
+        saver = tf.train.Saver(max_to_keep=24, keep_checkpoint_every_n_hours=1)
+        checker = tf.train.CheckpointSaverHook(checkpoint_dir=str(self.logdir),
+                                               save_secs=60 * 60 * 10,
+                                               saver=saver)
+        summarizer = tf.train.SummarySaverHook(output_dir=train_logs,
+                                               summary_op=self.summaries,
+                                               save_steps=100)
+        tester = FeedSummarySaverHook({self.feedhandle: test_handle_op},
+                                      output_dir=test_logs,
+                                      summary_op=self.summaries,
+                                      save_steps=100)
+        timer = tf.train.StepCounterHook(output_dir=train_logs)
+        hooks = [checker, summarizer, timer, tester]
+
+        config = tf.ConfigProto()
+        config.graph_options.optimizer_options.global_jit_level = \
+            tf.OptimizerOptions.ON_2
+
+        kwargs = dict(checkpoint_dir=str(self.logdir), hooks=hooks,
+                      config=config, stop_grace_period_secs=10)
         with tf.train.SingularMonitoredSession(**kwargs) as sess:
             handle = sess.raw_session().run(handle_op)
-            threads = [Thread(target=self._train, args=(sess, handle))
-                       for _ in range(workers)]
-            for thread in threads:
-                thread.start()
-            for thread in threads:
-                thread.join()
+            while not sess.should_stop():
+                sess.run(self.net.train, {self.feedhandle: handle,
+                                          self.training: True})
 
     def evaluate(self, fetch_images=True):
         """Evaluate the model.
@@ -89,7 +91,7 @@ class Model:
             'No checkpoint found in logdir: {}'.format(self.logdir)
 
         results = []
-        handle_op = self.dataset.create_train_feed()
+        handle_op = self.dataset.create_test_feed()
         kwargs = dict(checkpoint_dir=str(self.logdir))
         with tf.train.SingularMonitoredSession(**kwargs) as sess:
             handle = sess.raw_session().run(handle_op)
