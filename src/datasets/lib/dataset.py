@@ -83,6 +83,10 @@ class Dataset:
                 pairs.append((inputfile, targetfile))
             except StopIteration:
                 print('No matching target found: {}'.format(path.name))
+        # Print targets left over.
+        for targetfile in targets:
+            path = Path(targetfile)
+            print('No matching input found: {}'.format(path.name))
         return pairs
 
     def _parse_images(self, input_filepath, target_filepath):
@@ -111,8 +115,7 @@ class Dataset:
             print('matplotlib not available.')
             return
         from . import Dataviewer
-
-        samples = random.sample(self.train_files, k=100)
+        samples = random.sample(self.test_files + self.train_files, k=100)
         images = [(Image.open(a), Image.open(b)) for a, b in samples]
         images = [(a, b.resize(a.size)) for a, b in images]
         Dataviewer(images, name=self.__class__.__name__,

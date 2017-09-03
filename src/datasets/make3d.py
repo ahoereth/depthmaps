@@ -2,14 +2,27 @@
 
 https://cs.stanford.edu/group/reconstruction3d/Readme
 
-@inproceedings{Saxena2009,
-    author = "Ashutosh Saxena and Min Sun and Andrew Y. Ng",
-    title = {Make3D: Learning 3D Scene Structure from a Single Still Image},
-    journal = {IEEE PAMI},
-    volume = {30},
-    number = {5},
-    pages = {824--840},
-    year = {2009}
+@article{Saxena2009,
+  title = {Make3d: Learning 3d scene structure from a single still image},
+  author = {Saxena, Ashutosh and Sun, Min and Ng, Andrew Y},
+  journal = {IEEE transactions on pattern analysis and machine intelligence},
+  volume = {31},
+  number = {5},
+  pages = {824--840},
+  year = {2009},
+  publisher = {IEEE}
+}
+
+@article{Liu2016,
+  title = {Learning depth from single monocular images using deep convolutional
+           neural fields},
+  author = {Liu, Fayao and Shen, Chunhua and Lin, Guosheng and Reid, Ian},
+  journal = {IEEE transactions on pattern analysis and machine intelligence},
+  volume = {38},
+  number = {10},
+  pages = {2024--2039},
+  year = {2016},
+  publisher = {IEEE}
 }
 """
 import os
@@ -57,12 +70,14 @@ class Make3D(Dataset):
                     with Image.open(path) as img:
                         img = img.resize(self.input_shape)
                 except (ValueError, OSError):
-                    print("Couldn't open {}.".format(path))
+                    print("Couldn't open {}".format(path))
                 else:
                     path = Path(path)
                     name = path.name.split('img-')[1]
-                    target = (path.parent / name).with_suffix('.image.jpg')
-                    img.save(target, 'JPEG')
+                    if name.startswith('10.21'):
+                        name = name[5:]
+                    target = (path.parent / name).with_suffix('.image.png')
+                    img.save(target, 'PNG')
                 os.remove(str(path))
         elif name.endswith('targets'):
             for path in glob(str(directory / '**/*.mat'), recursive=True):
@@ -70,12 +85,14 @@ class Make3D(Dataset):
                     mat = spio.loadmat(path)['Position3DGrid'][..., 3]
                     img = spmisc.toimage(mat)
                 except ValueError:
-                    print("Couldn't open {}.".format(path))
+                    print("Couldn't open {}".format(path))
                 else:
                     path = Path(path)
                     name = path.name.split('depth_sph_corr-')[1]
-                    target = (path.parent / name).with_suffix('.depth.jpg')
-                    img.save(target, 'JPEG')
+                    if name.startswith('10.21'):
+                        name = name[5:]
+                    target = (path.parent / name).with_suffix('.depth.png')
+                    img.save(target, 'PNG')
                 os.remove(str(path))
 
 
