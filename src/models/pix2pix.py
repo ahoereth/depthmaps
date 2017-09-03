@@ -21,14 +21,22 @@ class Pix2Pix(Model):
 
     @staticmethod
     def conv2d(inputs, num_outputs, kernel_size=(4, 4), strides=2,
-               padding='SAME', activation=lrelu, norm=None):
-        """Wrapper for tf.layers.conv2d with default parameters."""
+               padding='SAME', activation=lrelu, norm=False):
+        """Wrapper for tf.layers.conv2d with default parameters.
+
+        Note the following quote, which also applies to conv2d_transpose:
+        > We apply batch normalization using the statistics of
+        > the test batch, rather than aggregated statistics of the training
+        > batch. This approach to batch normalization, when the
+        > batch size is set to 1, has been termed “instance normalization"
+        > and has been demonstrated to be effective at image generation tasks.
+        """
         init = tf.random_normal_initializer(0, 0.02)
         net = tf.layers.conv2d(inputs, num_outputs, kernel_size, strides,
                                padding=padding,
                                kernel_initializer=init)
-        if norm is not None:
-            net = tf.layers.batch_normalization(net, training=norm)
+        if norm:
+            net = tf.layers.batch_normalization(net, training=True)
         return activation(net)
 
     @staticmethod
@@ -40,11 +48,11 @@ class Pix2Pix(Model):
                                          strides, padding=padding,
                                          kernel_initializer=init)
         if norm is not None:
-            net = tf.layers.batch_normalization(net, training=norm)
+            net = tf.layers.batch_normalization(net, training=True)
         return activation(net)
 
     @classmethod
-    def make_discriminator(cls, images, training):
+    def make_discriminator(cls, images):
         """Discriminator.
 
         Args:
@@ -58,14 +66,14 @@ class Pix2Pix(Model):
             (tf.Tensor): Sigmoid network output, single scalar in [0, 1].
         """
         net = cls.conv2d(images, 64)  # 128x128
-        net = cls.conv2d(net, 128, norm=training)  # 64x64
-        net = cls.conv2d(net, 256, norm=training)  # 32x32
-        net = cls.conv2d(net, 512, (1, 1), norm=training)  # 31x31
+        net = cls.conv2d(net, 128, norm=True)  # 64x64
+        net = cls.conv2d(net, 256, norm=True)  # 32x32
+        net = cls.conv2d(net, 512, (1, 1), norm=True)  # 31x31
         net = cls.conv2d(net, 1, (1, 1), activation=tf.nn.sigmoid)
         return net  # 30x30
 
     @classmethod
-    def make_generator(cls, images, training):
+    def make_generator(cls, images):
         """Generator.
 
         Args:
@@ -80,31 +88,31 @@ class Pix2Pix(Model):
         with tf.variable_scope('encoder'):  # 256x256
             net = images
             enc0 = cls.conv2d(net, 64)  # 128x128
-            enc1 = cls.conv2d(enc0, 128, norm=training)  # 64x64
-            enc2 = cls.conv2d(enc1, 256, norm=training)  # 32x32
-            enc3 = cls.conv2d(enc2, 512, norm=training)  # 16x16
-            enc4 = cls.conv2d(enc3, 512, norm=training)  # 8x8
-            enc5 = cls.conv2d(enc4, 512, norm=training)  # 4x4
-            enc6 = cls.conv2d(enc5, 512, norm=training)  # 2x2x512
-            enc7 = cls.conv2d(enc6, 512, norm=training)  # 1x1x512
+            enc1 = cls.conv2d(enc0, 128, norm=True)  # 64x64
+            enc2 = cls.conv2d(enc1, 256, norm=True)  # 32x32
+            enc3 = cls.conv2d(enc2, 512, norm=True)  # 16x16
+            enc4 = cls.conv2d(enc3, 512, norm=True)  # 8x8
+            enc5 = cls.conv2d(enc4, 512, norm=True)  # 4x4
+            enc6 = cls.conv2d(enc5, 512, norm=True)  # 2x2x512
+            enc7 = cls.conv2d(enc6, 512, norm=True)  # 1x1x512
         tf.summary.histogram('encoded', enc7)
         with tf.variable_scope('decoder'):
-            dec = cls.conv2d_transpose(enc7, 512, norm=training)  # 2x2
+            dec = cls.conv2d_transpose(enc7, 512, norm=True)  # 2x2
             dec = tf.layers.dropout(dec, .5)  # 512
             dec = tf.concat([dec, enc6], axis=-1)  # 1024
-            dec = cls.conv2d_transpose(dec, 512, norm=training)  # 4x4
+            dec = cls.conv2d_transpose(dec, 512, norm=True)  # 4x4
             dec = tf.layers.dropout(dec, .5)
             dec = tf.concat([dec, enc5], axis=-1)  # 1024
-            dec = cls.conv2d_transpose(dec, 512, norm=training)  # 8x8
+            dec = cls.conv2d_transpose(dec, 512, norm=True)  # 8x8
             dec = tf.layers.dropout(dec, .5)
             dec = tf.concat([dec, enc4], axis=-1)  # 1024
-            dec = cls.conv2d_transpose(dec, 512, norm=training)  # 16x16
+            dec = cls.conv2d_transpose(dec, 512, norm=True)  # 16x16
             dec = tf.concat([dec, enc3], axis=-1)  # 1024
-            dec = cls.conv2d_transpose(dec, 256, norm=training)  # 32x32
+            dec = cls.conv2d_transpose(dec, 256, norm=True)  # 32x32
             dec = tf.concat([dec, enc2], axis=-1)  # 512
-            dec = cls.conv2d_transpose(dec, 128, norm=training)  # 64x64
+            dec = cls.conv2d_transpose(dec, 128, norm=True)  # 64x64
             dec = tf.concat([dec, enc1], axis=-1)  # 256
-            dec = cls.conv2d_transpose(dec, 64, norm=training)  # 128x128
+            dec = cls.conv2d_transpose(dec, 64, norm=True)  # 128x128
             dec = tf.concat([dec, enc0], axis=-1)  # 128
             out = cls.conv2d_transpose(dec, 1, activation=tf.nn.tanh)
         tf.summary.histogram('output', out)
@@ -126,16 +134,16 @@ class Pix2Pix(Model):
 
         # Create generator.
         with tf.variable_scope('generator/net') as g_net:
-            generator = self.make_generator(inputs, training)
+            generator = self.make_generator(inputs)
 
         # Create the two discriminator graphs, once with the ground truths
         # and once the generated depth maps as inputs.
         with tf.variable_scope('discriminator') as d_net:  # Real
             real = tf.concat([inputs, targets], axis=-1, name='input/real')
-            d_real = self.make_discriminator(real, training)
+            d_real = self.make_discriminator(real)
         with tf.variable_scope('discriminator', reuse=True):  # Fake
             fake = tf.concat([inputs, generator], axis=-1, name='input/fake')
-            d_fake = self.make_discriminator(fake, training)
+            d_fake = self.make_discriminator(fake)
 
         # Keep moving averages over the training and testing loss individually.
         trainema = tf.train.ExponentialMovingAverage(decay=0.999)
@@ -156,18 +164,16 @@ class Pix2Pix(Model):
         def train_generator():
             with tf.variable_scope('generator/optimizer'):
                 g_theta = g_net.trainable_variables()
-                g_ops = g_net.get_collection(tf.GraphKeys.UPDATE_OPS)
                 ema_g_train = trainema.apply([g_loss])
-                with tf.control_dependencies(g_ops + [ema_g_train]):
+                with tf.control_dependencies([ema_g_train]):
                     optimizer = tf.train.AdamOptimizer(1e-4)
                     return optimizer.minimize(g_loss, self.step, g_theta)
 
         def train_discriminator():
             with tf.variable_scope('discriminator/optimizer'):
-                d_ops = d_net.get_collection(tf.GraphKeys.UPDATE_OPS)
                 d_theta = d_net.trainable_variables()
                 ema_d_train = trainema.apply([d_loss])
-                with tf.control_dependencies(d_ops + [ema_d_train]):
+                with tf.control_dependencies([ema_d_train]):
                     optimizer = tf.train.AdamOptimizer(1e-4)
                     return optimizer.minimize(d_loss, self.step, d_theta)
 
