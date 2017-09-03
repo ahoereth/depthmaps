@@ -5,5 +5,6 @@ __pycache__/
 data/
 tmp/
 logs/
+runs/
 
 .DS_STORE

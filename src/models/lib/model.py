@@ -55,7 +55,7 @@ class Model:
         train_logs = str(self.logdir / 'train')
 
         saver = tf.train.Saver(max_to_keep=24, keep_checkpoint_every_n_hours=1)
-        checker = tf.train.CheckpointSaverHook(checkpoint_dir=str(self.logdir),
+        checker = tf.train.CheckpointSaverHook(checkpoint_dir=test_logs,
                                                save_secs=60 * 60 * 10,
                                                saver=saver)
         summarizer = tf.train.SummarySaverHook(output_dir=train_logs,
@@ -72,7 +72,7 @@ class Model:
         config.graph_options.optimizer_options.global_jit_level = \
             tf.OptimizerOptions.ON_2
 
-        kwargs = dict(checkpoint_dir=str(self.logdir), hooks=hooks,
+        kwargs = dict(checkpoint_dir=test_logs, hooks=hooks,
                       config=config, stop_grace_period_secs=10)
         with tf.train.SingularMonitoredSession(**kwargs) as sess:
             handle = sess.raw_session().run(handle_op)
@@ -91,8 +91,9 @@ class Model:
             'No checkpoint found in logdir: {}'.format(self.logdir)
 
         results = []
+        test_logs = str(self.logdir / 'test')
         handle_op = self.dataset.create_test_feed()
-        kwargs = dict(checkpoint_dir=str(self.logdir))
+        kwargs = dict(checkpoint_dir=test_logs)
         with tf.train.SingularMonitoredSession(**kwargs) as sess:
             handle = sess.raw_session().run(handle_op)
             while not sess.should_stop():

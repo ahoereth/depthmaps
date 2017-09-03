@@ -23,7 +23,7 @@ else:
 class Dataviewer:
 
     def __init__(self, dataset, *,
-                 rows=2,
+                 rows=6,
                  keys=['img', 'depth'],
                  cmaps={'depth': 'jet'},
                  name=None):

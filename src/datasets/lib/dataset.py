@@ -129,6 +129,7 @@ class Dataset:
             return
         from . import Dataviewer
         data = self.test_files + self.train_files
+        print('Dataset size: ', len(data))
         random.shuffle(data)
         Dataviewer(data, name=self.__class__.__name__,
                    keys=['image', 'depth'],
