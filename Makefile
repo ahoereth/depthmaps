@@ -19,6 +19,6 @@ rsync:
 
 # Quick access for a visual insight into the datasets.
 datasets:
-	python3 -m src.datasets.merged
+	python3 -m datasets.merged
 datasets/%:
-	python3 -m src.datasets.$*
+	python3 -m datasets.$*
