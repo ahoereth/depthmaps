@@ -22,7 +22,7 @@ URL = 'http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled
 
 class Nyu(Dataset):
     directory = DATA_DIR / 'nyu'
-    predefined_split_available = False
+    has_predefined_split = False
     input_shape = (480, 320)
     target_shape = (55 * 480 // 320, 55)
 

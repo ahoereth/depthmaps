@@ -45,7 +45,7 @@ FILES = {
 
 class Make3D(Dataset):
     directory = DATA_DIR / 'make3d'
-    predefined_split_available = True
+    has_predefined_split = True
     input_shape = (480, 320)
     target_shape = (55 * 480 // 320, 55)
     # input_shape = (2272, 1704)

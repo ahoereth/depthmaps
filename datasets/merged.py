@@ -8,7 +8,7 @@ from .nyu import Nyu
 
 class Merged(Dataset):
     directory = DATA_DIR
-    predefined_split_available = False
+    has_predefined_split = False
 
     def __init__(self, *args, **kwargs):
         # Make sure each dataset is available, prepare their data.

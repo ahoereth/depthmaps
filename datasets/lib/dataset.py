@@ -15,10 +15,11 @@ DATA_DIR = (Path(__file__).parent / '..' / '..' / 'tmp').resolve()
 
 class Dataset:
     directory = DATA_DIR
-    predefined_split_available = False
+    has_predefined_split = False
     input_shape = (0, 0)
     target_shape = (0, 0)
     test_only = False
+    has_targets = True
 
     def __init__(self, cleanup_on_exit=False, use_predefined_split=False,
                  test_split=10, workers=4):
@@ -27,9 +28,8 @@ class Dataset:
         self.workers = workers
 
         d = self.directory
-        if use_predefined_split:
+        if use_predefined_split and self.has_predefined_split:
             # Use original test/train split.
-            assert self.predefined_split_available is True
             inputs = glob(str(d / 'test/**/*.image.*'), recursive=True)
             targets = glob(str(d / 'test/**/*.depth.*'), recursive=True)
             self.test_files = self._match_pairs(inputs, targets)
@@ -43,6 +43,7 @@ class Dataset:
             pairs = self._match_pairs(inputs, targets)
             if self.test_only:
                 self.test_files = pairs
+                self.train_files = []
             else:
                 n = len(pairs)
                 perm = random.sample(range(n), n)

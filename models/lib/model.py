@@ -37,9 +37,9 @@ class Model:
         self.inputs, self.targets = feed
 
         # Create the network.
-        self.outputs, self.train = self.build_network(self.inputs,
-                                                      self.targets,
-                                                      training=self.training)
+        self.outputs, self.train_op = self.build_network(self.inputs,
+                                                         self.targets,
+                                                         self.training)
 
         tf.summary.image('inputs', self.inputs)
         tf.summary.image('targets', self.targets)
@@ -86,8 +86,8 @@ class Model:
         with tf.train.SingularMonitoredSession(**kwargs) as sess:
             handle = sess.raw_session().run(handle_op)
             while not sess.should_stop():
-                sess.run(self.train, {self.feedhandle: handle,
-                                      self.training: True})
+                sess.run(self.train_op, {self.feedhandle: handle,
+                                         self.training: True})
 
     def evaluate(self):
         """Evaluate the model.

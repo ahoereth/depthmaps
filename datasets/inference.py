@@ -14,6 +14,7 @@ class Inference(Dataset):
     input_shape = (480, 320)
     target_shape = (120, 80)  # Used for mock target images.
     test_only = True
+    has_targets = False
 
     def __init__(self, cleanup_on_exit=True, **kwargs):
         self._mock_images(DATA_DIR / '..' / 'inference', self.directory)
@@ -25,7 +26,7 @@ class Inference(Dataset):
         os.makedirs(str(dst), exist_ok=True)
         mock = Image.fromarray(np.zeros(self.target_shape, dtype=np.uint8))
         for ext in ('jpg', 'png', 'gif'):
-            for path in glob(str(src / '**/*.'.format(ext)), recursive=True):
+            for path in glob(str(src / '**/*.{}'.format(ext)), recursive=True):
                 try:
                     with Image.open(path) as img:
                         img = img.resize(self.input_shape)
