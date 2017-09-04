@@ -1,4 +1,4 @@
-documentation:
-	pandoc meta.yaml documentation.md \
+all:
+	pandoc meta.yaml report.md documentation.md \
 		--bibliography library.bib \
-		-o documentation.pdf
+		-o report.pdf
