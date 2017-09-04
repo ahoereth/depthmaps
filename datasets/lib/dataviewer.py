@@ -12,14 +12,16 @@ try:
     import _tkinter  # Just to check the dependency.
     import matplotlib
 except ImportError:
-    pass
+    GUI_AVAILABLE = False
 else:
+    GUI_AVAILABLE = True
     matplotlib.use('TkAgg')
     from matplotlib import pyplot as plt
     from matplotlib import image
 
 
 class Dataviewer:
+    AVAILABLE = GUI_AVAILABLE
 
     def __init__(self, dataset, *,
                  rows=3,
@@ -60,6 +62,8 @@ class Dataviewer:
         self.keycb = self.figure.canvas.mpl_connect(
             'key_press_event',
             lambda event: self.__key_press_event(event))
+
+        plt.show()
 
     def show_next(self):
         self.update_axes()

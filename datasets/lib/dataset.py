@@ -124,16 +124,13 @@ class Dataset:
 
     def view(self):
         """Display samples from dataset using dataviewer."""
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError:
-            print('matplotlib not available.')
-            return
         from . import Dataviewer
+        if not Dataviewer.GUI_AVAILABLE:
+            raise RuntimeError('No GUI available.')
         data = self.test_files + self.train_files
-        print('Dataset size: ', len(data))
         random.shuffle(data)
+        print('Showing the complete dataset (test and train) in random order.')
+        print('Dataset size: ', len(data))
         Dataviewer(data, name=self.__class__.__name__,
                    keys=['image', 'depth'],
                    cmaps={'depth': 'gray'})
-        plt.show()
