@@ -13,25 +13,29 @@ class Inference(Dataset):
     directory = DATA_DIR / 'inference'
     input_shape = (480, 320)
     target_shape = (120, 80)  # Used for mock target images.
+    test_only = True
 
-    def __init__(self, *args, cleanup_on_exit=True, **kwargs):
+    def __init__(self, cleanup_on_exit=True, **kwargs):
         self._mock_images(DATA_DIR / '..' / 'inference', self.directory)
-        super().__init__(*args, **kwargs)
+        super().__init__(cleanup_on_exit=cleanup_on_exit, **kwargs)
 
     def _mock_images(self, src, dst):
         """Creates input and mock depth image for each image in src."""
+        dst = dst.resolve()
+        os.makedirs(str(dst), exist_ok=True)
         mock = Image.fromarray(np.zeros(self.target_shape, dtype=np.uint8))
-        for path in glob(str(src / '**/*.(jpg|png|gif)')):
-            try:
-                with Image.open(path) as img:
-                    img = img.resize(self.input_shape)
-            except (ValueError, OSError):
-                print("Couldn't open {}".format(path))
-            else:
-                path = Path(path)
-                filename = (path.parent / path.name)
-                img.save(filename.with_suffix('.image.png'), 'PNG')
-                mock.save(filename.with_suffix('.depth.png'), 'PNG')
+        for ext in ('jpg', 'png', 'gif'):
+            for path in glob(str(src / '**/*.'.format(ext)), recursive=True):
+                try:
+                    with Image.open(path) as img:
+                        img = img.resize(self.input_shape)
+                except (ValueError, OSError):
+                    print("Couldn't open {}".format(path))
+                else:
+                    path = Path(path)
+                    filename = (dst / path.name)
+                    img.save(filename.with_suffix('.image.png'), 'PNG')
+                    mock.save(filename.with_suffix('.depth.png'), 'PNG')
 
 
 if __name__ == '__main__':

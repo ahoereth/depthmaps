@@ -9,7 +9,7 @@
 """
 import tensorflow as tf
 
-from .lib import Model, Network, lrelu, soft_labels_like
+from .lib import Model, lrelu
 
 
 class Pix2Pix(Model):
@@ -126,6 +126,8 @@ class Pix2Pix(Model):
         being passed to this network. This method handles scaling them to
         the tanh range and back.
         """
+        global_step = tf.train.get_or_create_global_step()
+
         # Scale inputs and targets from -1 to 1.
         inputs = tf.subtract(inputs * 2, 1, name='scaled_inputs')
         targets = tf.subtract(targets * 2, 1, name='scaled_targets')
@@ -167,7 +169,7 @@ class Pix2Pix(Model):
                 ema_g_train = trainema.apply([g_loss])
                 with tf.control_dependencies([ema_g_train]):
                     optimizer = tf.train.AdamOptimizer(1e-4)
-                    return optimizer.minimize(g_loss, self.step, g_theta)
+                    return optimizer.minimize(g_loss, global_step, g_theta)
 
         def train_discriminator():
             with tf.variable_scope('discriminator/optimizer'):
@@ -175,10 +177,10 @@ class Pix2Pix(Model):
                 ema_d_train = trainema.apply([d_loss])
                 with tf.control_dependencies([ema_d_train]):
                     optimizer = tf.train.AdamOptimizer(1e-4)
-                    return optimizer.minimize(d_loss, self.step, d_theta)
+                    return optimizer.minimize(d_loss, global_step, d_theta)
 
         # Run train operations alternating.
-        train = tf.cond(tf.cast(self.step % 2, tf.bool),
+        train = tf.cond(tf.cast(global_step % 2, tf.bool),
                         train_generator, train_discriminator)
 
         # Scale outputs back to 0/1 range and add the test loss ema ops.
@@ -197,4 +199,4 @@ class Pix2Pix(Model):
         tf.summary.scalar('generator/loss/ema', g_loss_ema)
         tf.summary.scalar('discriminator/loss/ema', d_loss_ema)
 
-        return Network(outputs, train, None)
+        return outputs, train

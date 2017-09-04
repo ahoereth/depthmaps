@@ -10,7 +10,7 @@
 """
 import tensorflow as tf
 
-from .lib import Model, Network
+from .lib import Model
 
 
 class Eigen2014(Model):
@@ -53,10 +53,13 @@ class Eigen2014(Model):
             # are scaled from 0 to 1 the same way the inputs are.
             outputs = tf.layers.conv2d(fine, 1, 5, padding='same',
                                        activation=tf.nn.sigmoid)
+
         with tf.variable_scope('loss'):
             tf.losses.mean_squared_error(targets, outputs)
             loss = tf.losses.get_total_loss()
             tf.summary.scalar('total', loss)
+
+        global_step = tf.train.get_or_create_global_step()
         with tf.variable_scope('optimizer'):
-            train = tf.train.AdamOptimizer(1e-4).minimize(loss, self.step)
-        return Network(outputs, train, loss)
+            train = tf.train.AdamOptimizer(1e-4).minimize(loss, global_step)
+        return outputs, train

@@ -10,18 +10,20 @@ from .feed_summary_saver_hook import FeedSummarySaverHook
 from .utils import to_float
 
 
-Network = namedtuple('Network', ('output', 'train', 'loss'))
-
-
 class Model:
     """Depth map generation base model."""
     input_shape = (0, 0, 0)
     target_shape = (0, 0, 0)
     batchsize = 32
 
-    def __init__(self, dataset, checkpoint=None):
+    def __init__(self, dataset, checkpoint_dir=None):
         time = datetime.now().strftime('%y%m%d-%H%M')
         self.logdir = Path('logs') / type(self).__name__ / time
+
+        # The checkpoint directory initially holds the location of a checkpoint
+        # passed in from the outside and later on, if this model is being
+        # trained directly, will be updated with its own checkpoint location.
+        self.checkpoint_dir = checkpoint_dir
 
         self.dataset = dataset
 
@@ -35,12 +37,13 @@ class Model:
         self.inputs, self.targets = feed
 
         # Create the network.
-        self.net = self.build_network(self.inputs, self.targets,
-                                      training=self.training)
+        self.outputs, self.train = self.build_network(self.inputs,
+                                                      self.targets,
+                                                      training=self.training)
 
         tf.summary.image('inputs', self.inputs)
         tf.summary.image('targets', self.targets)
-        tf.summary.image('outputs', self.net.output)
+        tf.summary.image('outputs', self.outputs)
         self.summaries = tf.summary.merge_all()
 
     def build_network(self, inputs, targets, training=False):
@@ -72,36 +75,38 @@ class Model:
         config.graph_options.optimizer_options.global_jit_level = \
             tf.OptimizerOptions.ON_2
 
-        kwargs = dict(checkpoint_dir=test_logs, hooks=hooks,
-                      config=config, stop_grace_period_secs=10)
+        ckp = test_logs if self.checkpoint_dir is None else self.checkpoint_dir
+        kwargs = dict(checkpoint_dir=ckp, hooks=hooks, config=config,
+                      stop_grace_period_secs=10)
+
+        # Model is being trained directly, update checkpoint location.
+        self.checkpoint_dir = test_logs
+
+        # Train the model.
         with tf.train.SingularMonitoredSession(**kwargs) as sess:
             handle = sess.raw_session().run(handle_op)
             while not sess.should_stop():
-                sess.run(self.net.train, {self.feedhandle: handle,
-                                          self.training: True})
+                sess.run(self.train, {self.feedhandle: handle,
+                                      self.training: True})
 
-    def evaluate(self, fetch_images=True):
+    def evaluate(self):
         """Evaluate the model.
 
         Still passes the data through the model in the specified batchsize
         in order to prevent out of memory errors. Basically performs a whole
         epoch of feed forward steps and collects the results.
         """
-        assert tf.train.checkpoint_exists(str(self.logdir)), \
-            'No checkpoint found in logdir: {}'.format(self.logdir)
+        assert tf.train.checkpoint_exists(str(self.checkpoint_dir)), \
+            'No checkpoint found in logdir: {}'.format(self.checkpoint_dir)
 
         results = []
-        test_logs = str(self.logdir / 'test')
         handle_op = self.dataset.create_test_feed()
-        kwargs = dict(checkpoint_dir=test_logs)
+        kwargs = dict(checkpoint_dir=self.checkpoint_dir)
         with tf.train.SingularMonitoredSession(**kwargs) as sess:
             handle = sess.raw_session().run(handle_op)
             while not sess.should_stop():
-                if fetch_images:
-                    inputs, targets, outputs = sess.run(
-                        [self.inputs, self.targets, self.net.output],
-                        {self.feedhandle: handle})
-                    results.extend(list(zip(inputs, targets, outputs)))
-                else:
-                    sess.run(self.net.output, {self.feedhandle: handle})
+                inputs, targets, outputs = sess.run(
+                    [self.inputs, self.targets, self.outputs],
+                    {self.feedhandle: handle})
+                results.extend(list(zip(inputs, outputs, targets)))
         return results

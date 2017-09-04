@@ -18,6 +18,7 @@ class Dataset:
     predefined_split_available = False
     input_shape = (0, 0)
     target_shape = (0, 0)
+    test_only = False
 
     def __init__(self, cleanup_on_exit=False, use_predefined_split=False,
                  test_split=10, workers=4):
@@ -40,10 +41,13 @@ class Dataset:
             inputs = glob(str(d / '**/*.image.*'), recursive=True)
             targets = glob(str(d / '**/*.depth.*'), recursive=True)
             pairs = self._match_pairs(inputs, targets)
-            size = len(pairs)
-            perm = random.sample(range(size), size)
-            self.train_files = [pairs[i] for i in perm[size // test_split:]]
-            self.test_files = [pairs[i] for i in perm[:size // test_split]]
+            if self.test_only:
+                self.test_files = pairs
+            else:
+                n = len(pairs)
+                perm = random.sample(range(n), n)
+                self.train_files = [pairs[i] for i in perm[n // test_split:]]
+                self.test_files = [pairs[i] for i in perm[:n // test_split]]
 
     def finalize(self, shapes, batchsize):
         assert not hasattr(self, 'output_shapes')
