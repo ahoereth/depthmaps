@@ -53,7 +53,6 @@ class Make3D2(Dataset):
             group = name.split('_')[0]
             archive, _ = maybe_download(self.directory / group, url)
             target_dir, extracted = maybe_extract(archive)
-            self._tempdirs.append(target_dir)
             if extracted:
                 self._preprocess_data(name, target_dir)
         super().__init__(*args, **kwargs)

@@ -16,7 +16,6 @@ class Inference(Dataset):
 
     def __init__(self, *args, cleanup_on_exit=True, **kwargs):
         self._mock_images(DATA_DIR / '..' / 'inference', self.directory)
-        self._tempdirs.append(self.directory)
         super().__init__(*args, **kwargs)
 
     def _mock_images(self, src, dst):

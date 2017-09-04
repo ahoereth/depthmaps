@@ -11,10 +11,10 @@ class Merged(Dataset):
     predefined_split_available = False
 
     def __init__(self, *args, **kwargs):
-        # Prepare all the data and collect the temporary directories.
-        self._tempdirs.append(Make3D()._tempdirs)
-        self._tempdirs.append(Make3D2()._tempdirs)
-        self._tempdirs.append(Nyu()._tempdirs)
+        # Make sure each dataset is available, prepare their data.
+        Make3D()
+        Make3D2()
+        Nyu()
 
         # This should merge all datasets because self.directory is the parent
         # diretory to all the data from the individual datasets.

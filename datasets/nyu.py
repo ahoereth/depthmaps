@@ -28,7 +28,6 @@ class Nyu(Dataset):
 
     def __init__(self, *args, **kwargs):
         path, _ = maybe_download(DATA_DIR, URL)
-        self._tempdirs.append(path)
         if not self.directory.exists():
             self._extract_mat(self.directory, path)
         super().__init__(*args, **kwargs)

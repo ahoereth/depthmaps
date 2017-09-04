@@ -1,7 +1,6 @@
 """Interactive data viewer.
 
-Props @shoeffner:
-https://github.com/shoeffner/ann3depth/blob/master/src/visualize/dataviewer.py
+Props @shoeffner.
 """
 from itertools import cycle
 from pathlib import Path
@@ -23,7 +22,7 @@ else:
 class Dataviewer:
 
     def __init__(self, dataset, *,
-                 rows=6,
+                 rows=3,
                  keys=['img', 'depth'],
                  cmaps={'depth': 'jet'},
                  name=None):

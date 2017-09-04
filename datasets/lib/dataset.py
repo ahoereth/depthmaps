@@ -19,10 +19,8 @@ class Dataset:
     input_shape = (0, 0)
     target_shape = (0, 0)
 
-    _tempdirs = []
-
     def __init__(self, cleanup_on_exit=False, use_predefined_split=False,
-                 test_split=10, workers=2):
+                 test_split=10, workers=4):
         if cleanup_on_exit:
             atexit.register(self._cleanup)
         self.workers = workers
@@ -80,8 +78,7 @@ class Dataset:
 
     def _cleanup(self):
         """Delete temporary folders on exit."""
-        for path in self._tempdirs:
-            shutil.rmtree(path, ignore_errors=True)
+        shutil.rmtree(self.directory, ignore_errors=True)
 
     @staticmethod
     def _match_pairs(inputs, targets):
