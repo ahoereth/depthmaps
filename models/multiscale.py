@@ -13,7 +13,7 @@ import tensorflow as tf
 from .lib import Model
 
 
-class Eigen2014(Model):
+class MultiScale(Model):
     input_shape = (304, 228, 1)  # Eigen et al 2014 uses grayscale input.
     target_shape = (74, 55, 1)
     batchsize = 32

@@ -12,9 +12,10 @@ CPUS = multiprocessing.cpu_count()
 
 
 tf.app.flags.DEFINE_string('dataset', 'Make3D', 'Dataset to use. Defaults to '
-                           'Make3D. One of: [Make3D, Make3D2, Nyu]')
+                           'Make3D. One of: [Make3D, Make3D2, Nyu, Merged]')
 tf.app.flags.DEFINE_string('model', 'Pix2Pix', 'Model to use. Defaults to '
-                           'Pix2Pix. One of: [Simple, MultiScale, Pix2Pix]')
+                           'Pix2Pix. One of: [Simple, MultiScale, Pix2Pix, '
+                           'Generator, Inference]')
 tf.app.flags.DEFINE_string('checkpoint_dir', None, 'Directory containing '
                            'a checkpoint to load, has to fit the model.')
 tf.app.flags.DEFINE_integer('epochs', 0, 'Number of epochs to train for. '

@@ -4,6 +4,7 @@
 
 ```bash
 $ conda env create -f environment.yml
+$ source activate depthmaps
 $ python3 run.py --help
 usage: run.py [-h] [--dataset DATASET] [--model MODEL]
               [--checkpoint_dir CHECKPOINT_DIR] [--epochs EPOCHS]
@@ -13,9 +14,9 @@ usage: run.py [-h] [--dataset DATASET] [--model MODEL]
 optional arguments:
   -h, --help            show this help message and exit
   --dataset DATASET     Dataset to use. Defaults to Make3D. One of: [Make3D,
-                        Make3D2, Nyu]
+                        Make3D2, Nyu, Merged, Inference]
   --model MODEL         Model to use. Defaults to Pix2Pix. One of: [Simple,
-                        MultiScale, Pix2Pix]
+                        MultiScale, Pix2Pix, Generator]
   --checkpoint_dir CHECKPOINT_DIR
                         Directory containing a checkpoint to load, has to fit
                         the model.
