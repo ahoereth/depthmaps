@@ -19,10 +19,13 @@ In figure @fig:gan_losses one can very well see the correlation between the disc
 
 We trained the pix2pix model for around two days on a AWS p2.xlarge instance using a single core of a Tesla K80 GPU -- the results on the data was remarkable, when evaluating using a 10% test dataset. One challenge the network was still not able to solve quite successfully are gradients, as can be seen in @fig:pix2pix_nyu.
 
-
 ![Results from the `Pix2Pix` model on NYU trained using the `Merged` dataset](assets/pix2pix_results_merged.png){#fig:pix2pix_nyu}
 
 ![Results from the `Pix2Pix` model on Make3D trained using the `Merged` dataset](assets/pix2pix_results_merged3.png){#fig:pix2pix_make3d}
+
+Although we hoped to be able to make the network infer depth information for completle unrelated pictures taken with different cameras in different environments and such, we failed. @Fig:pix2pix_custom shows such examples. This goes far beyond having a train/test split using a single or three (as we did) datasets, but is actually the area where applying those networks becomes interesting. We were not able to investigate this further but see a lot of potential in specifically this area.
+
+![Results from the `Pix2Pix` model on unrelated images](assets/pix2pix_results_custom.png){#fig:pix2pix_custom}
 
 
 ## Generator
