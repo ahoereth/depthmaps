@@ -35,3 +35,10 @@ optional arguments:
                         Whether to not use the dataset's predefined train/test
                         split even if one is available. Defaults to False.
 ```
+
+
+To use the provided pretrained Pix2Pix model you need to checkout an older point of the repository beforehand, because we made some changes to the network graphs since creating the checkpoints.
+
+```bash
+git checkout 61b9909
+```
