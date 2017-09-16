@@ -1,4 +1,4 @@
 all:
-	pandoc meta.yaml report.md documentation.md \
+	pandoc meta.yaml *.md \
 		--bibliography library.bib \
 		-o report.pdf
