@@ -10,7 +10,9 @@ from tensorflow.contrib.data import Dataset as TFDataset, Iterator
 
 
 # Temporary directory next to the `datasets` folder.
-DATA_DIR = (Path(__file__).parent / '..' / '..' / 'tmp').resolve()
+tmpdir = (Path(__file__).parent / '..' / '..' / 'tmp')
+os.makedirs(str(tmpdir), exist_ok=True)
+DATA_DIR = tmpdir.resolve()
 
 
 class Dataset:
