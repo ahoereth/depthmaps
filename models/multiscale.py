@@ -54,9 +54,9 @@ class MultiScale(Model):
             outputs = tf.layers.conv2d(fine, 1, 5, padding='same',
                                        activation=tf.nn.sigmoid)
 
-        tf.losses.mean_squared_error(targets, outputs)
+        loss = tf.losses.mean_squared_error(targets, outputs)
         global_step = tf.train.get_or_create_global_step()
         optimizer = tf.train.AdamOptimizer(1e-4)
-        train_op = optimizer.minimize(tf.losses.get_total_loss(), global_step)
+        train_op = optimizer.minimize(loss, global_step)
 
-        return outputs, train_op, [tf.losses.get_total_loss()]
+        return outputs, train_op, [loss]

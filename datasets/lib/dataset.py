@@ -65,13 +65,11 @@ class Dataset:
 
     def _get_feed(self, attrname, epochs=1):
         data = getattr(self, attrname)
-        inputs, targets = [tf.convert_to_tensor(x, tf.string)
-                           for x in list(zip(*data))]
-        tfdataset = TFDataset.from_tensor_slices((inputs, targets))
-        buffersize = self.batchsize * self.workers
+        i, d = [tf.convert_to_tensor(x, tf.string) for x in list(zip(*data))]
+        tfdataset = TFDataset.from_tensor_slices((i, d))
+        tfdataset = tfdataset.shuffle(buffer_size=len(data[0]))
         tfdataset = tfdataset.map(self._parse_images, num_threads=self.workers,
-                                  output_buffer_size=buffersize)
-        tfdataset = tfdataset.shuffle(buffer_size=10000)
+                                  output_buffer_size=1000)
         tfdataset = tfdataset.batch(self.batchsize)
         tfdataset = tfdataset.repeat(epochs)
         iterator = tfdataset.make_one_shot_iterator()
@@ -128,7 +126,7 @@ class Dataset:
     def view(self):
         """Display samples from dataset using dataviewer."""
         from . import Dataviewer
-        if not Dataviewer.GUI_AVAILABLE:
+        if not Dataviewer.AVAILABLE:
             raise RuntimeError('No GUI available.')
         data = self.test_files + self.train_files
         random.shuffle(data)
@@ -137,3 +135,9 @@ class Dataset:
         Dataviewer(data, name=self.__class__.__name__,
                    keys=['image', 'depth'],
                    cmaps={'depth': 'gray'})
+
+    def __str__(self):
+        """Creates a human readable test file csv."""
+        sub = len(str(self.directory)) + 1
+        return '\n'.join([','.join([image[sub:], depth[sub:]])
+                          for image, depth in self.test_files])

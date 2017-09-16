@@ -1,4 +1,5 @@
 """Depth map generation base model."""
+import os
 from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +19,13 @@ class Model:
 
     def __init__(self, dataset, checkpoint_dir=None):
         time = datetime.now().strftime('%y%m%d-%H%M')
-        self.logdir = Path('logs') / type(self).__name__ / time
+        self.logdir = (Path('logs') / type(self).__name__ /
+                       type(dataset).__name__ / time)
+
+        # Save the list of test files.
+        os.makedirs(str(self.logdir), exist_ok=True)
+        with open(str(self.logdir / 'test_files.txt'), 'w') as file:
+            file.write(str(dataset))
 
         # The checkpoint directory initially holds the location of a checkpoint
         # passed in from the outside and later on, if this model is being
@@ -26,9 +33,7 @@ class Model:
         self.checkpoint_dir = checkpoint_dir
 
         self.dataset = dataset
-
         self.step = tf.train.get_or_create_global_step()
-
         self.training = tf.placeholder_with_default(False, None)
 
         # Resize and scale the test and train data, provide iterators.
@@ -68,7 +73,7 @@ class Model:
 
     def train(self, epochs=1):
         handle_op = self.dataset.create_train_feed(epochs)
-        test_handle_op = self.dataset.create_train_feed(epochs=-1)
+        test_handle_op = self.dataset.create_test_feed(epochs=-1)
 
         test_logs = str(self.logdir / 'test')
         train_logs = str(self.logdir / 'train')
@@ -79,12 +84,13 @@ class Model:
                                                saver=saver)
         summarizer = tf.train.SummarySaverHook(output_dir=train_logs,
                                                summary_op=self.summaries,
-                                               save_secs=120)
+                                               save_steps=200)
         tester = FeedSummarySaverHook({self.feedhandle: test_handle_op},
                                       output_dir=test_logs,
                                       summary_op=self.summaries,
-                                      save_secs=120)
-        timer = tf.train.StepCounterHook(output_dir=train_logs)
+                                      save_steps=200)
+        timer = tf.train.StepCounterHook(output_dir=train_logs,
+                                         every_n_steps=200)
         hooks = [checker, summarizer, timer, tester]
 
         config = tf.ConfigProto()

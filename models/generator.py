@@ -15,17 +15,18 @@ class Generator(Pix2Pix):
         global_step = tf.train.get_or_create_global_step()
 
         # Scale inputs and targets from -1 to 1.
-        inputs = tf.subtract(inputs * 2, 1, name='scaled_inputs')
-        targets = tf.subtract(targets * 2, 1, name='scaled_targets')
+        inputs = tf.subtract(inputs * 2, 1., name='scaled_inputs')
+        targets = tf.subtract(targets * 2, 1., name='scaled_targets')
 
         # Create the same generator network structure as used by Isola 2016.
         generator = self.make_generator(inputs)
 
-        tf.losses.mean_squared_error(labels=targets, predictions=generator)
+        loss = tf.losses.mean_squared_error(labels=targets,
+                                            predictions=generator)
         optimizer = tf.train.AdamOptimizer(1e-4)
-        train_op = optimizer.minimize(tf.losses.get_total_loss(), global_step)
+        train_op = optimizer.minimize(loss, global_step)
 
         # Scale outputs back to between 0 and 1
-        outputs = tf.divide(generator + 1, 2, name='outputs')
+        outputs = tf.divide(generator + 1., 2., name='outputs')
 
-        return outputs, train_op, [tf.losses.get_total_loss()]
+        return outputs, train_op, [loss]

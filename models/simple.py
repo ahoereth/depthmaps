@@ -22,8 +22,8 @@ class Simple(Model):
             outputs = tf.layers.conv2d(net, 1, 1, activation=tf.nn.sigmoid)
 
         global_step = tf.train.get_or_create_global_step()
-        tf.losses.mean_squared_error(targets, outputs)
+        loss = tf.losses.mean_squared_error(targets, outputs)
         optimizer = tf.train.AdamOptimizer()
-        train_op = optimizer.minimize(tf.losses.get_total_loss(), global_step)
+        train_op = optimizer.minimize(loss, global_step)
 
-        return outputs, train_op, [tf.losses.get_total_loss()]
+        return outputs, train_op, [loss]

@@ -129,8 +129,8 @@ class Pix2Pix(Model):
         global_step = tf.train.get_or_create_global_step()
 
         # Scale inputs and targets from -1 to 1.
-        inputs = tf.subtract(inputs * 2, 1, name='scaled_inputs')
-        targets = tf.subtract(targets * 2, 1, name='scaled_targets')
+        inputs = tf.subtract(inputs * 2, 1., name='scaled_inputs')
+        targets = tf.subtract(targets * 2, 1., name='scaled_targets')
         tf.summary.histogram('input', inputs)
         tf.summary.histogram('target', targets)
 
@@ -188,8 +188,8 @@ class Pix2Pix(Model):
             ema_g_test = testema.apply([g_loss])
             ema_d_test = testema.apply([d_loss])
             with tf.control_dependencies([ema_d_test, ema_g_test]):
-                return (generator + 1) / 2
-        outputs = tf.cond(training, lambda: (generator + 1) / 2, test_outputs)
+                return (generator + 1) / 2.
+        outputs = tf.cond(training, lambda: (generator + 1) / 2., test_outputs)
 
         # Select the correct loss ema to summarize.
         g_loss_ema = tf.cond(training, lambda: trainema.average(g_loss),
