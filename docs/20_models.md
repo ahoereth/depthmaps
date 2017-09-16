@@ -17,6 +17,7 @@ For training, we again used a MSE loss function and Adam Optimizer. In the paper
 
 ![Multi Scale Network Architecture by Eigen et al 2014](assets/eigen2014.png)
 
+![Graph of the `MultiScale` model. Input images coming in from the iterator at the bottom are fed into the coarse and the fine networks, while the fine network also receives outputs from the coarse network. Together with the true depths coming from the iterator the generated images are fed into a basic mean squared error loss which is being optimized using stochastic gradient descent.](assets/multiscale_graph.png){height=125%}
 
 ## Generative Adversarial Network  {#sec:gan}
 
@@ -38,3 +39,5 @@ A significant problem of the network is that it is very large. 16 convolutional 
 **TODO**: Write this section.
 
 Same as the GAN, but without the discriminator. Basically a encoder/decoder network with skip connections.
+
+![Graph of the `Generator` model. Images and target depths coming in through the iterator at the bottom are each scaled to the range from -1 to 1 and, after the images passed through the encoder and decoder, fed into a basic mean squared error loss.](assets/generator_graph.png){height=125%}
