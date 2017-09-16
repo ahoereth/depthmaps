@@ -17,32 +17,15 @@ class Generator(Pix2Pix):
         # Scale inputs and targets from -1 to 1.
         inputs = tf.subtract(inputs * 2, 1, name='scaled_inputs')
         targets = tf.subtract(targets * 2, 1, name='scaled_targets')
-        tf.summary.histogram('input', inputs)
-        tf.summary.histogram('target', targets)
 
+        # Create the same generator network structure as used by Isola 2016.
         generator = self.make_generator(inputs)
 
-        # Keep moving averages over the training and testing loss individually.
-        trainema = tf.train.ExponentialMovingAverage(decay=0.999)
-        testema = tf.train.ExponentialMovingAverage(decay=0.99)
+        tf.losses.mean_squared_error(labels=targets, predictions=generator)
+        optimizer = tf.train.AdamOptimizer(1e-4)
+        train_op = optimizer.minimize(tf.losses.get_total_loss(), global_step)
 
-        with tf.variable_scope('loss'):
-            tf.losses.mean_squared_error(labels=targets, predictions=generator)
-            loss = tf.losses.get_total_loss()
-            tf.summary.scalar('live', loss)
+        # Scale outputs back to between 0 and 1
+        outputs = tf.divide(generator + 1, 2, name='outputs')
 
-        with tf.control_dependencies([trainema.apply([loss])]):
-            optimizer = tf.train.AdamOptimizer(1e-4)
-            train_op = optimizer.minimize(loss, global_step)
-
-        # Scale outputs back to 0/1 range and add the test loss ema op.
-        with tf.control_dependencies([testema.apply([loss])]):
-            outputs = (generator + 1) / 2
-
-        # Select the correct loss ema to summarize.
-        loss_ema = tf.cond(training,
-                           lambda: trainema.average(loss),
-                           lambda: testema.average(loss))
-        tf.summary.scalar('loss/ema', loss_ema)
-
-        return outputs, train_op
+        return outputs, train_op, [tf.losses.get_total_loss()]

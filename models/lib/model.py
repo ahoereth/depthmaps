@@ -37,13 +37,29 @@ class Model:
         self.inputs, self.targets = feed
 
         # Create the network.
-        self.outputs, self.train_op = self.build_network(self.inputs,
-                                                         self.targets,
-                                                         self.training)
+        outputs, train_op, losses = self.build_network(self.inputs,
+                                                       self.targets,
+                                                       self.training)
 
-        tf.summary.image('inputs', self.inputs)
-        tf.summary.image('targets', self.targets)
-        tf.summary.image('outputs', self.outputs)
+        # Summarize train and test loss.
+        ema_train = tf.train.ExponentialMovingAverage(decay=0.999)
+        ema_test = tf.train.ExponentialMovingAverage(decay=0.99)
+        with tf.control_dependencies([ema_test.apply(losses)]):
+            self.outputs = tf.identity(outputs)
+        self.train_op = tf.group(train_op, ema_train.apply(losses))
+
+        # Summarize losses depending on current phase.
+        for i, loss in enumerate(losses):
+            average = tf.cond(self.training,
+                              lambda: ema_train.average(loss),
+                              lambda: ema_test.average(loss))
+            tf.summary.scalar('loss/{}'.format(i), average)
+
+        # Summarize samples from the networks behavior.
+        tf.summary.image('inputs', self.inputs, max_outputs=1)
+        tf.summary.image('targets', self.targets, max_outputs=1)
+        tf.summary.image('outputs', self.outputs, max_outputs=1)
+
         self.summaries = tf.summary.merge_all()
 
     def build_network(self, inputs, targets, training=False):
@@ -59,15 +75,15 @@ class Model:
 
         saver = tf.train.Saver(max_to_keep=24, keep_checkpoint_every_n_hours=1)
         checker = tf.train.CheckpointSaverHook(checkpoint_dir=test_logs,
-                                               save_secs=60 * 60 * 10,
+                                               save_secs=60 * 10,
                                                saver=saver)
         summarizer = tf.train.SummarySaverHook(output_dir=train_logs,
                                                summary_op=self.summaries,
-                                               save_steps=100)
+                                               save_secs=120)
         tester = FeedSummarySaverHook({self.feedhandle: test_handle_op},
                                       output_dir=test_logs,
                                       summary_op=self.summaries,
-                                      save_steps=100)
+                                      save_secs=120)
         timer = tf.train.StepCounterHook(output_dir=train_logs)
         hooks = [checker, summarizer, timer, tester]
 

@@ -199,4 +199,4 @@ class Pix2Pix(Model):
         tf.summary.scalar('generator/loss/ema', g_loss_ema)
         tf.summary.scalar('discriminator/loss/ema', d_loss_ema)
 
-        return outputs, train
+        return outputs, train, (g_loss, d_loss)
