@@ -1,4 +1,4 @@
-# Introduction
+# Introduction  {#sec:introduction}
 
 ## Project Goal
 For several tasks of Computer Vision, depth information of the captured images are essential. In autonomous driving the car needs to estimate the distances, and robots require depth information to move in their environment. However, depth cameras are expensive and lead to a much higher effort, as in addition to the normal image recording, a depth image needs to be taken. Therefore, it seems to be an appropriate task for a neural network to estimate depth maps from 2D images. Here, we focus on depth map estimation from single images instead of using multiple views.

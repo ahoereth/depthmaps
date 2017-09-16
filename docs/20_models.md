@@ -1,13 +1,13 @@
-# Models
+# Models  {#sec:models}
 
-## Simple convolutional network
+## Simple convolutional network  {#sec:simple}
 
 - `models/simple.py`
 
 To get a first grasp on the project and to test our data, we firstly implemented a small convolutional network. It consisted of four convolutional layers with relu-activation in the first three. For the detailed structure of the net see figure 1 ???. We used a normal Mean Squared Error loss function and Adam Optimizer with learning rate 0.0001 to minimize the loss. The network was trained over 2000 epochs on batches of size 32 on the training set of 400 images. The results on the test set of 134 images was reasonable, as the general structure of the depth map was usually similar to real depth map. However, it contained several squared artifacts, which were probably learned because the dataset itself contains such artifacts due to reflection of light by the windows. So in the depth maps of the dataset there sometimes are squares on houses that have a much smaller depth value than they ought have. This is reflected in our model, although even without these artifacts the result would still be far from perfect.
 
 
-## Multi-Scale Deep Network
+## Multi-Scale Deep Network  {#sec:multiscale}
 
 - `models/multiscale.py`
 
@@ -18,7 +18,7 @@ For training, we again used a MSE loss function and Adam Optimizer. In the paper
 ![Multi Scale Network Architecture by Eigen et al 2014](assets/eigen2014.png)
 
 
-## Generative Adversarial Network
+## Generative Adversarial Network  {#sec:gan}
 
 - `models/pix2pix.py`
 
@@ -33,7 +33,7 @@ The loss function used in the paper is a sigmoid cross entropy loss between the 
 A significant problem of the network is that it is very large. 16 convolutional layers in the generator plus five layers in the discriminator require a lot of power and memory. To avoid memory problems, the authors of the paper propose to take a batch size of one, which might of course lead to other problems as the loss and the derivative is very unreliable over such a small sample. As we trained the network, the results were not satisfactory, as the did only contain the structure of the image and not of the depth map, and also lots of checkerboard artifacts. This is a well-known problem of GANs because of the deconvolution: The overlap of strides leads to amplified values in some rows and columns.
 
 
-## Generator
+## Generator  {#sec:generator}
 
 **TODO**: Write this section.
 
