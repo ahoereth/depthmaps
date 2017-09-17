@@ -20,7 +20,7 @@ Note that dataset sizes in the following might differ from the official listings
 ### NYU  {#sec:nyu}
 **TODO**: Fix this section, currently only copy/pasted from Nina.
 
-We started off with the plan to work with two popular datasets which provide 2D images with the corresponding depth maps. The larger one of these was the NYU Depth Dataset V2 by Nathan Silberman, Pushmeet Kohli, Derek Hoiem and Rob Fergus [@Silberman2012]. It consists of 1449 pairs of RGB images and depth images, taken with the Microsoft Kinect. The dataset contains primarily indoor images ranging from bedrooms over kitchens and living rooms to office spaces. You can see some samples of input depth image pairs in @fig:nyu.
+One popular dataset for depth map estimation is the NYU Depth Dataset V2 by Nathan Silberman, Pushmeet Kohli, Derek Hoiem and Rob Fergus [@Silberman2012]. It consists of 1449 pairs of RGB images and depth images, taken with the Microsoft Kinect. The dataset contains only indoor images ranging from bedrooms to kitchens and living rooms to office spaces. What actually turned out to be the main advantage of the dataset is that there is also a "labeled" version available, which includes a preprocessed version of the depth maps and also provide a segmentation of objects for each image, which we did not use though. It might however be an interesting task in further work to investigate whether a segmentation of the image as an additional input to the neural network can improve the depth map generation. More importantly for us, in the preprocessed depth maps the missing values have alrady been filled in by using a colorization scheme proposed in the paper "Colorization using optimization" by Levin et al. This makes the depth images appear to be of better quality then the ones of the other datasets we used. You can see some samples of input depth image pairs in @fig:nyu.
 
 
 - Image/depth pairs: 1449
@@ -33,7 +33,7 @@ We started off with the plan to work with two popular datasets which provide 2D 
 ### Make3D  {#sec:make3d}
 **TODO**: Fix this section, currently only copy/pasted from Nina.
 
-The second dataset is the Make3D Range Image set by Ashutosh Saxena, Sung H. Chung and Andrew Y. Ng [@Liu2016, @Saxena2009]. It contains 400 training images and aligned depth maps, and 134 test images and depth maps. We found out, though, that the data is rather imperfect, as sometimes the depth maps are not completely aligned with the images and there are missing values in the depth maps. Make3D contains outdoor images of trees, streets and buildings, @fig:make3d shows some samples.
+Secondly, we use the Make3D Range Image set by Ashutosh Saxena, Sung H. Chung and Andrew Y. Ng [@Liu2016, @Saxena2009]. It contains 400 training images and aligned depth maps, and 134 test images and depth maps. Make3D contains outdoor images of trees, streets and buildings, in contrast to the NYU set. We decided to include this dataset in order to test our model on very different kinds of images. We found out, though, that the data is rather imperfect, as sometimes the depth maps are not completely aligned with the images, so a tree might be a bit shifted to one side. Moreover, unlike in the NYU set there are lots of missing values in the depth maps. In the examples you can see that the depth camera also often fail to recognize the windows belonging to a building, probably because the sun is mirrowed. @fig:make3d shows some samples.
 
 - Image/depth pairs: 523
 - View: `python -m datasets.make3d`
@@ -56,7 +56,7 @@ The Make3D 2 dataset is very simillar to the original Make3D dataset, consisting
 ### Merged  {#sec:merged}
 **TODO**: A paragraph about the merged dataset.
 
-Because the models perfomed quite well on each individual dataset we created a harder task: Trying to learn all the available data at once. This *merged* dataset pulls in all the data from the three above and provides a dataset significantly bigger and with significantly biggere choice of scenes than each individual one. Looking through the dataset will see you this wide range of available scenes, simillar to @fig:merged.
+Because the models perfomed quite well on each individual dataset we created a harder task: Trying to learn all the available data at once. This *merged* dataset pulls in all the data from the three above and provides a dataset significantly bigger and with significantly larger choice of scenes than each individual one. Looking through the dataset you will see this wide range of available scenes, simillar to @fig:merged.
 
 - Image/depth pairs: 2407
 - View: `python -m datasets.merged`
