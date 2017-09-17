@@ -47,8 +47,8 @@ class Model:
                                                        self.training)
 
         # Summarize train and test loss.
-        ema_train = tf.train.ExponentialMovingAverage(decay=0.999)
-        ema_test = tf.train.ExponentialMovingAverage(decay=0.99)
+        ema_train = tf.train.ExponentialMovingAverage(decay=0.99)
+        ema_test = tf.train.ExponentialMovingAverage(decay=0.9)
         with tf.control_dependencies([ema_test.apply(losses)]):
             self.outputs = tf.identity(outputs)
         self.train_op = tf.group(train_op, ema_train.apply(losses))

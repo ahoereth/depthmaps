@@ -147,56 +147,33 @@ class Pix2Pix(Model):
             fake = tf.concat([inputs, generator], axis=-1, name='input/fake')
             d_fake = self.make_discriminator(fake)
 
-        # Keep moving averages over the training and testing loss individually.
-        trainema = tf.train.ExponentialMovingAverage(decay=0.999)
-        testema = tf.train.ExponentialMovingAverage(decay=0.99)
-
         with tf.variable_scope('generator/loss'):
             g_loss_gan = tf.reduce_mean(-tf.log(d_fake + 1e-12), name='gan')
             g_loss_l1 = tf.reduce_mean(tf.abs(targets - generator), name='l1')
             g_loss = g_loss_gan + self.LAMBDA * g_loss_l1
-            tf.summary.scalar('live', g_loss)
 
         with tf.variable_scope('discriminator/loss'):
             d_loss_real = tf.log(d_real + 1e-12, name='real')
             d_loss_fake = tf.log(1 - d_fake + 1e-12, name='fake')
             d_loss = tf.reduce_mean(-(d_loss_real + d_loss_fake))
-            tf.summary.scalar('live', d_loss)
 
         def train_generator():
             with tf.variable_scope('generator/optimizer'):
                 g_theta = g_net.trainable_variables()
-                ema_g_train = trainema.apply([g_loss])
-                with tf.control_dependencies([ema_g_train]):
-                    optimizer = tf.train.AdamOptimizer(1e-4)
-                    return optimizer.minimize(g_loss, global_step, g_theta)
+                optimizer = tf.train.AdamOptimizer(1e-4)
+                return optimizer.minimize(g_loss, global_step, g_theta)
 
         def train_discriminator():
             with tf.variable_scope('discriminator/optimizer'):
                 d_theta = d_net.trainable_variables()
-                ema_d_train = trainema.apply([d_loss])
-                with tf.control_dependencies([ema_d_train]):
-                    optimizer = tf.train.AdamOptimizer(1e-4)
-                    return optimizer.minimize(d_loss, global_step, d_theta)
+                optimizer = tf.train.AdamOptimizer(1e-4)
+                return optimizer.minimize(d_loss, global_step, d_theta)
 
         # Run train operations alternating.
         train = tf.cond(tf.cast(global_step % 2, tf.bool),
                         train_generator, train_discriminator)
 
-        # Scale outputs back to 0/1 range and add the test loss ema ops.
-        def test_outputs():
-            ema_g_test = testema.apply([g_loss])
-            ema_d_test = testema.apply([d_loss])
-            with tf.control_dependencies([ema_d_test, ema_g_test]):
-                return (generator + 1) / 2.
-        outputs = tf.cond(training, lambda: (generator + 1) / 2., test_outputs)
-
-        # Select the correct loss ema to summarize.
-        g_loss_ema = tf.cond(training, lambda: trainema.average(g_loss),
-                             lambda: testema.average(g_loss))
-        d_loss_ema = tf.cond(training, lambda: trainema.average(d_loss),
-                             lambda: testema.average(d_loss))
-        tf.summary.scalar('generator/loss/ema', g_loss_ema)
-        tf.summary.scalar('discriminator/loss/ema', d_loss_ema)
+        # Scale outputs back to 0/1 range.
+        outputs = (generator + 1) / 2.
 
         return outputs, train, (g_loss, d_loss)
