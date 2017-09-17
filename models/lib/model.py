@@ -78,10 +78,14 @@ class Model:
         test_logs = str(self.logdir / 'test')
         train_logs = str(self.logdir / 'train')
 
-        saver = tf.train.Saver(max_to_keep=24, keep_checkpoint_every_n_hours=1)
+        # Keeping all checkpoints in order to actually use the best one for
+        # inference in the future.
+        saver = tf.train.Saver(max_to_keep=0)
         checker = tf.train.CheckpointSaverHook(checkpoint_dir=test_logs,
-                                               save_secs=60 * 10,
+                                               save_secs=60 * 10,  # 10 minutes
                                                saver=saver)
+
+        # Writing summaries individually for testing and training data.
         summarizer = tf.train.SummarySaverHook(output_dir=train_logs,
                                                summary_op=self.summaries,
                                                save_steps=200)
@@ -89,14 +93,16 @@ class Model:
                                       output_dir=test_logs,
                                       summary_op=self.summaries,
                                       save_steps=200)
+
+        # Log how many steps the model makes per second.
         timer = tf.train.StepCounterHook(output_dir=train_logs,
                                          every_n_steps=200)
-        hooks = [checker, summarizer, timer, tester]
 
         config = tf.ConfigProto()
         config.graph_options.optimizer_options.global_jit_level = \
             tf.OptimizerOptions.ON_2
 
+        hooks = [checker, summarizer, timer, tester]
         ckp = test_logs if self.checkpoint_dir is None else self.checkpoint_dir
         kwargs = dict(checkpoint_dir=ckp, hooks=hooks, config=config,
                       stop_grace_period_secs=10)
