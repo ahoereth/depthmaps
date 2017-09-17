@@ -6,7 +6,7 @@
 
 The model we built from scratch to get a first grasp on the task consists of four convolutional layers with relu-activation in the first three. We used a Mean Squared Error loss function and Adam Optimizer with learning rate 0.0001 to minimize the loss. The network was trained over 2000 epochs on batches of size 32 on the training set of 400 images.
 
-**TODO:** make figure for this simple net
+![Simple convolutional network for Image-to-Imgage transformation](assets/simple_conv.png)
 
 ### Evaluation
 
