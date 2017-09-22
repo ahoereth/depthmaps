@@ -7,3 +7,6 @@ Retrieving depth information from single images is a challenging task, as the in
 In this new application of the pix-to-pix network we show that this network is able to retain the sharp edges of objects and thereby avoid the problem of bleariness. By encoding the image structure in convolutional layers and on the other hand retaining it in the skip connections, the network is perfectly suited to transform the image to the depth map. In further work on the project, in a first step it could be investigated how the network size can be reduced, to make it possible to use larger batch sizes and to reduce the time effort. For example, looking at the histograms of variables in tensorboard we already found that the inner encoding layer of the generator is not necessary as all weights are zero. Another point would be the discriminator, where it also might not be necessary to have five layers and its size could be reduced.
 
 In our process we ourselves learnt a lot about the topic of depth map estimation which we all were not familiar with before working on this project, and our idea of using a Generative Adversarial Network on this task turned out to be very successful. We consider the pix-to-pix network as an important improvement to the quality of depth images, and hope that this application will be pursued further.
+
+
+\pagebreak

@@ -38,3 +38,5 @@ A significant problem of the network is that it is very large. 16 convolutional 
 In a variation of the pix-to-pix network, we used just the generator and applied a normal Mean Sqared Error loss function to the outputs. Basically it is exactly the same as the GAN, but without the discriminator, i.e. it is a encoder/decoder network with skip connections. We hoped it could be better than the @Eigen2014 model at encoding the information and transforming the images to depth maps, while avoiding the complicated balancing of generator and discriminator. In @fig:generator_graph you can see the structure of the generator's graph.
 
 ![Graph of the `Generator` model. Images and target depths coming in through the iterator at the bottom are each scaled to the range from -1 to 1 and, after the images passed through the encoder and decoder, fed into a basic mean squared error loss.](assets/generator_graph.png){height=125%}
+
+\pagebreak

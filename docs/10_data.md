@@ -69,3 +69,5 @@ Because the models perfomed quite well on each individual dataset we created a h
 The `Inference` dataset diverges from the path of the others -- it does not download any data from the internet but simply provides a shallow layer of access for custom images one wants to run inference on. It reads images of type `gif`, `png` or `jpg` from the `inference` folder (located in the root of this directory) and provides them to the models together with some mock depthmaps (all zeros).
 
 This is of interest when using a pretrained model and wanting to evaluate it on images for one actually does not yet have depth maps. If our approach proves successful, this can also be used to actually generate depthmaps.
+
+\pagebreak
