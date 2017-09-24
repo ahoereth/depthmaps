@@ -6,7 +6,7 @@ Note that all results presented in this section are on test data -- data not pre
 
 ![Training data from the `MultiScale` model on the `Make3d2` dataset, continued.](assets/multiscale_make3d2_train.png){#fig:multiscale_make3d2_train}
 
-Although this hints at overfitting, we were not able to obtain better results through early stopping or stronger regularization. 
+Although this hints at overfitting, we were not able to obtain better results through early stopping or stronger regularization.
 
 ## Simple
 
@@ -32,7 +32,9 @@ In figure @fig:gan_losses one can very well see the correlation between the disc
 
 ![Generator and discriminator losses from the Pix2Pix model as exponential moving averages over two days of training. Regarding the overall goal of generating realistic depth maps, lower loss values are always better for the generator and a value of 0.5 to be desired for the discriminator.](assets/gan_losses.png){#fig:gan_losses}
 
-We trained the pix2pix model for around two days on a AWS p2.xlarge instance using a single core of a Tesla K80 GPU. The results on the data was quite good especially for the NYU dataset, which  One challenge the network was still not able to solve quite successfully are gradients, as can be seen in @fig:pix2pix_nyu. The two figures show the test images of the NYU data at different steps in training. Unfortunateley some depth information are not represented correctly, such as the table in the left bottom corner of the following image is missing in the generated depth map.
+The GAN produces the overall best results from any of our models. Specifically the Make3D data sets appears to be a harder problem, we reckon thats the case because of their more mixed scenes: It contains images from buildings, streets and the woods, which each can differ quite strongly.
+
+The two figures show the test images of the NYU data at different steps in training. Unfortunateley some depth information are not represented correctly, such as the table in the left bottom corner of the following image is missing in the generated depth map.
 
 ![Results from the `Pix2Pix` model on the `Nyu` dataset](assets/pix2pix_nyu_1.png){#fig:pix2pix_nyu_1}
 
