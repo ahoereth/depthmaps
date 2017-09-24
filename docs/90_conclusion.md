@@ -10,3 +10,8 @@ In our process we ourselves learnt a lot about the topic of depth map estimation
 
 
 \pagebreak
+
+
+# References
+
+<!-- references will be automatically inserted here -->
