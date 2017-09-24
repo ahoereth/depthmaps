@@ -1,10 +1,10 @@
 # Results  {#sec:results}
 
-Note that all results presented in this section are on test data -- data not presented to the network during training. For evaluation, we use 10% of the data. Most models on most datasets, specifically the more complex ones like `Pix2Pix` are able to nearly perfectly recreate the test data when training completed. This can be seen at the following examples of the Pix2pix network in @fig:pix2pix_make3d2_train and the MultiScale network in @fig:multiscale_make3d_train:
+Note that all results presented in this section are on test data -- data not presented to the network during training. For evaluation, we use 10% of the data. Most models on most datasets, specifically the more complex ones like `Pix2Pix` are able to nearly perfectly recreate the test data when training completed. This can be seen at the following examples of the Pix2pix network in @fig:pix2pix_make3d2_train and the MultiScale network in @fig:multiscale_make3d2_train:
 
 ![Training data from the `Pix2pix` model on the `Make3d2` dataset, continued.](assets/pix2pix_make3d2_train.png){#fig:pix2pix_make3d2_train}
 
-![Training data from the `MultiScale` model on the `Make3d` dataset, continued.](assets/multiscale_make3d_train.png){#fig:multiscale_make3d_train}
+![Training data from the `MultiScale` model on the `Make3d2` dataset, continued.](assets/multiscale_make3d2_train.png){#fig:multiscale_make3d2_train}
 
 Although this hints at overfitting, we were not able to obtain better results through early stopping or stronger regularization. 
 
@@ -22,9 +22,9 @@ However, it is very blurry and in many examples the structure is hardly recogniz
 
 Our simplified implementation of @Eigen2014 produces reasonable, but not good results. As in the paper, the outputs remain blurry and egdes are vanishing. The results between the NYU dataset (which was used in the original paper) and the Make3D dataset (which we used now to evaluate the model as well) are of similar quality though, so at least the model seems to be independent of the dataset. In @fig:multiscale_make3d and @fig:multiscale_nyu you can see the test images of the the different data sets.
 
-![Results from the `MultiScale` model on the `Make3d` dataset, continued.](assets/multiscale_make3d){#fig:multiscale_make3d}
+![Results from the `MultiScale` model on the `Make3d` dataset, continued.](assets/multiscale_make3d.png){#fig:multiscale_make3d}
 
-![Results from the `MultiScale` model on the `NYU` dataset, continued.](assets/multiscale_nyu){#fig:multiscale_nyu}
+![Results from the `MultiScale` model on the `NYU` dataset, continued.](assets/multiscale_nyu.png){#fig:multiscale_nyu}
 
 ## Pix2Pix
 
