@@ -30,9 +30,7 @@ We looked into different papers of conditional GAN networks and found the Image-
 
 [^yenchlin]: [github.com/yenchenlin/pix2pix-tensorflow](https://github.com/yenchenlin/pix2pix-tensorflow)
 
-In the summer we finally found some last errors in our implementation and when it was trained the next time, the depth information were learned by the network. The training date looked almost perfect, but also the test images
-
-**TODO**: describe results
+In the summer we finally found some last errors in our implementation and when it was trained the next time, the depth information were learned by the network. The training date looked almost perfect, but the test images 
 
 . With these results we archieved our second goal of the project - to implement a GAN for depth map estimation. In the last month then we mainly reconstructed our code (see Training Pipeline) and worked on the documentation.
 
