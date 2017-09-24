@@ -1,13 +1,14 @@
-WD = /home/ubuntu
-IMAGE = tensorflow/tensorflow:1.3.0-gpu-py3
+WD ?= $(shell pwd)
+IMAGE = tensorflow/tensorflow:nightly-gpu-py3
 MACHINE ?= tfcc
+STATE ?= d
 
-run: rsync
-	nvidia-docker run -it -v $(WD):/wd -w /wd $(IMAGE) python3 src/run.py
+run:
+	nvidia-docker run -${STATE} -v $(WD):/wd -w /wd $(IMAGE) python run.py ${ARGS}
 
 # Visualize learning progress -- stdout is mostly mute, use this instead.
 tensorboard:
-	docker run -d -v $(WD)/logs:/logs -w /logs -p 6006:6006 \
+	docker run -${STATE} -v $(WD)/logs:/logs -w /logs -p 6006:6006 \
 		tensorflow/tensorflow:nightly tensorboard --logdir /logs --port 6006
 
 # Check remote GPU usage.
