@@ -23,14 +23,36 @@ class Dataset:
     test_only = False
     has_targets = True
 
+    test_files = []
+    train_files = []
+
     def __init__(self, cleanup_on_exit=False, use_predefined_split=False,
-                 test_split=10, workers=4):
+                 test_split=20, workers=4, checkpoint_dir=None):
         if cleanup_on_exit:
             atexit.register(self._cleanup)
         self.workers = workers
 
         d = self.directory
-        if use_predefined_split and self.has_predefined_split:
+
+        testfiles_file = None
+        if checkpoint_dir is not None:
+            testfiles_file = Path(checkpoint_dir) / 'test_files.txt'
+            if not os.path.isfile(str(testfiles_file)):
+                testfiles_file = None
+                print('Could not determine test_files from checkpoint dir.')
+
+        if testfiles_file is not None:
+            # Use testsplit as defined by checkpoint dir.
+            with open(testfiles_file, 'r') as file:
+                read = [(str(d / image), str(d / depth))
+                        for pair in file.read().split('\n')
+                        for image, depth in pair.split(',')]
+            inputs = glob(str(d / '**/*.image.*'), recursive=True)
+            targets = glob(str(d / '**/*.depth.*'), recursive=True)
+            pairs = self._match_pairs(inputs, targets)
+            self.test_files = [pair for pair in pairs if pair in read]
+            self.train_files = [pair for pair in pairs if pair not in read]
+        elif use_predefined_split and self.has_predefined_split:
             # Use original test/train split.
             inputs = glob(str(d / 'test/**/*.image.*'), recursive=True)
             targets = glob(str(d / 'test/**/*.depth.*'), recursive=True)

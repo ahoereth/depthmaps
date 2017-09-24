@@ -37,8 +37,9 @@ optional arguments:
 ```
 
 
-To use the provided pretrained Pix2Pix model you need to checkout an older point of the repository beforehand, because we made some changes to the network graphs since creating the checkpoints.
+## Pretrained Models
+Pretrained models are provided upon request.
 
-```bash
-git checkout 61b9909
-```
+To use pretrained models, move a model's files to a designated directory and specify that directory using the `--checkpoint_dir` argument above. Note that models are trained on specific datasets and will not perform well when applied to others, so set the `--model` and `--dataset` argument as fitting for the pretrained model defined.
+
+A model consists of at least a `checkpoint` file, three `model.ckpt-*` files (`data`, `index` and `meta`) and a `test_files.txt`. The `test_files.txt` file is optional and makes sure that when loading a model it uses the same dataset train/test split as during training -- to ignore that functionality simply delete this file.
