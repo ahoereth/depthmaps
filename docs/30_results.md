@@ -50,9 +50,8 @@ Although we hoped to be able to make the network infer depth information for pic
 
 
 ## Generator
-Although we only started using the generator part of the GAN network out of an itch, it proves to be quite succesfull. This probably is due to the fact that in the loss proposed by @Isola2016, the GAN loss only contributes to 1% of the total loss -- the other 99% are the normal mean square error loss between the generators output and the target depth images.
+Although we only started using the generator part of the GAN network out of an itch, it proves to be quite succesfull. This probably is due to the fact that in the loss proposed by @Isola2016, the GAN loss only contributes to 1% of the total loss -- the other 99% are the normal mean square error loss between the generators output and the target depth images. As expected, the generator produces reasonable, but more blurry results thant the complete GAN model.
 
-![Results from the `Generator` model](assets/generator_make3d2.png)
-
+![Results from the `Generator` model](assets/generator_nyu.png)
 
 \pagebreak
