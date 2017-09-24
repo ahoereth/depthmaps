@@ -48,7 +48,8 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     dataset = Dataset(cleanup_on_exit=FLAGS.cleanup_on_exit,
                       use_predefined_split=not FLAGS.use_custom_test_split,
-                      test_split=FLAGS.test_split, workers=FLAGS.workers)
+                      test_split=FLAGS.test_split, workers=FLAGS.workers,
+                      checkpoint_dir=FLAGS.checkpoint_dir)
     model = Model(dataset, checkpoint_dir=FLAGS.checkpoint_dir)
 
     if FLAGS.epochs > 0:
