@@ -24,7 +24,7 @@ Next, we started to experiment on the different models by using jupyter notebook
 
 Therefore, we started searching for more elaborated approaches. We had several papers in mind, see Related Work, but we chose the one by [Eigen2014] because of its good results and because all information required for the implementation were provided. We implemented this model together in one afternoon and after debugging, it yielded good results on our datasets. It is important to note that in the original paper only the NYU and the Kitti dataset is used, but as we saw in the results it could also handle the outdoor images of the Make3D set. With this implementation we have reached the first goal of our plan - to implement an existing paper on the topic and test it on different data.
 
-# GAN
+### GAN
 
 From there on we worked on our idea to use a Generative Adversarial Network for the task. In this case, of course it does not make sense to generate depth maps from noise, but from the underlying images. Therefore we used a Conditional GAN. Conditional GANs were introduced by Osindero and Mirza in the paper "Conditional Generative Adversarial Nets" from 2014 [@Mirza2014]. They propose a GAN in which the generator as well as the discriminator receive some information (such as labels or images) as input in addition to the noise vector. The noise vector can even be left out completely, such that the generator is not different at all from "normal" image to image convolutional networks. So what changes actually is just the loss function: Instead of calculating the error by comparing the pixel values to the real depth map (as in the coarse fine network for example), the loss depends on the output of the discriminator: The question here is whether the depth map seems realistic, given the image as additional input.
 
@@ -45,12 +45,8 @@ Moreover, the main challenge in the training of a GAN is to balance the two loss
 ### Training Pipeline
 After the exhaustive experimentation phase and some first very promising results, we started planning to a more advanced codebase. Playing around with different approaches for GANs quickly made clear that training our notebooks as they were did not make sense: On the one hand there is the amount of extensive repetitions when playing around with different models (for example data loading and preprocessing and also the significant amount of TensorFlow tooling), on the other hand notebooks simply do not make sense for multiple days of training on remote machines. 
 
-So we started reconstructing our database. In summary, the pipeline needed to provide two basic concepts, datasets and models. 
+So we started reconstructing our database. In summary, the pipeline needed to provide two basic concepts, datasets and models. All datasets available to us consist of input images and some kind of target depth maps. Nevertheless, different datasets provide them in different formats and consist of different file structures. Our primary goal here was to preprocess the data in a consistent way, such that it is easy to evaluate models against multiple datasets and also to add new datasets to the project.
 
-#### Datasets
-All datasets available to us consist of input images and some kind of target depth maps. Nevertheless, different datasets provide them in different formats and consist of different file structures. Our primary goal here was to preprocess the data in a consistent way, such that it is easy to evaluate models against multiple datasets and also to add new datasets to the project.
-
-#### Models
 Further more, we planned on implementing multiple models. All those need the same basic functionality. They need to be able to be trained, to perform inference on data and to provide extensive summaries to TensorBoard in order for us to evaluate them. They basically only differ in the network model structure, also this can become quite complex.
 
 We ended up with the whole codebase being structured around those conceps while providing a single entry point for easy command line usage, `run.py`. For details on how to use that entrypoint, checkout the project's primary readme file.

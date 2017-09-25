@@ -12,9 +12,9 @@ The model that we built from scratch to get a first grasp on the task consists o
 
 - `models/multiscale.py`
 
-Next, we implemented the structure given by the paper of @Eigen2014. The network on the one hand consists of a coarse network to process low level features. On the other hand the input is also passed into another convolutional network, but after the first layer (and one max pooling layer) the output is concatenated with the output of the coarse network. This leads to a refined depth map of better resolution. However, we wondered whether this coarse network is really necessary, as it is only one of 64 channels at the point of concatenation. The structure can be seen in fig @fig:eigen2014. For training, we again used a MSE loss function and Adam Optimizer.
+Next, we implemented the structure given by the paper of @Eigen2014. The network on the one hand consists of a coarse network to process low level features. On the other hand the input is also passed into another convolutional network, but after the first layer (and one max pooling layer) the output is concatenated with the output of the coarse network. This leads to a refined depth map of better resolution. However, we wondered whether this coarse network is really necessary, as it is only one of 64 channels at the point of concatenation. The structure can be seen in @fig:eigen2014. For training, we again used a MSE loss function and Adam Optimizer.
 
-![Multi Scale Network Architecture by Eigen et al 2014](assets/eigen2014.png)
+![Multi Scale Network Architecture by Eigen et al 2014](assets/eigen2014.png){#fig:eigen2014}
 
 ![Graph of the `MultiScale` model. Input images coming in from the iterator at the bottom are fed into the coarse and the fine networks, while the fine network also receives outputs from the coarse network. Together with the true depths coming from the iterator the generated images are fed into a basic mean squared error loss which is being optimized using stochastic gradient descent.](assets/multiscale_graph.png){height=125%}
 
@@ -33,6 +33,6 @@ A significant problem of the network is that it is very large. 16 convolutional 
 
 In a variation of the pix-to-pix network, we used just the generator and applied a normal Mean Squared Error loss function to the outputs. Basically it is exactly the same as the GAN, but without the discriminator, i.e. it is a encoder/decoder network with skip connections. We hoped it could be better than the @Eigen2014 model at encoding the information and transforming the images to depth maps, while avoiding the complicated balancing of generator and discriminator. In @fig:generator_graph you can see the structure of the generator's graph.
 
-![Graph of the `Generator` model. Images and target depths coming in through the iterator at the bottom are each scaled to the range from -1 to 1 and, after the images passed through the encoder and decoder, fed into a basic mean squared error loss.](assets/generator_graph.png){height=125%}
+![Graph of the `Generator` model. Images and target depths coming in through the iterator at the bottom are each scaled to the range from -1 to 1 and, after the images passed through the encoder and decoder, fed into a basic mean squared error loss.](assets/generator_graph.png){#fig:generator_graph}
 
 \pagebreak
