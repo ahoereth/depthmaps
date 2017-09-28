@@ -2,27 +2,25 @@
 
 Note that all results presented in this section are on test data -- data not presented to the network during training. For evaluation, we use 10% of the data. Most models on most datasets, specifically the more complex ones like `Pix2Pix` are able to nearly perfectly recreate the test data when training completed. This can be seen at the following examples of the Pix2pix network in @fig:pix2pix_make3d2_train and the MultiScale network in @fig:multiscale_make3d2_train:
 
-![Training data from the `Pix2pix` model on the `Make3d2` dataset, continued.](assets/pix2pix_make3d2_train.png){#fig:pix2pix_make3d2_train}
+![Training data from the `Pix2pix` model on the `Make3d2` dataset](assets/pix2pix_make3d2_train.png){#fig:pix2pix_make3d2_train}
 
-![Training data from the `MultiScale` model on the `Make3d2` dataset, continued.](assets/multiscale_make3d2_train.png){#fig:multiscale_make3d2_train}
+![Training data from the `MultiScale` model on the `Make3d2` dataset](assets/multiscale_make3d2_train.png){#fig:multiscale_make3d2_train}
 
 Although this hints at overfitting, we were not able to obtain better results through early stopping or stronger regularization. In this section we want to describe the results for each model.
 
 ## Simple
 
-The simple convolutional network is able to learn basic structures as shown in @fig:simple_make3d. However, it is very blurry and in many examples the structure is hardly recognizable. This can be seen in the example of the NYU dataset in @fig:simple_nyu. These results did not surprise us considering the simple straightforward approach that we used.
+The simple convolutional network is able to learn basic structures as shown in @fig:simple_make3d. However, it is very blurry and in many examples the structure is hardly recognizable. These results did not surprise us considering the simple straightforward approach that we used.
 
-![Results from the `Simple conv net` model on the `Make3d` dataset, continued.](assets/simple_make3d.png){#fig:simple_make3d}
-
-![Results from the `Simple conv net` model on the `NYU` dataset, continued.](assets/simple_nyu.png){#fig:simple_nyu}
+![Results from the `Simple conv net` model on the `Make3d` dataset](assets/simple_make3d.png){#fig:simple_make3d}
 
 ## MultiScale
 
 Our simplified implementation of @Eigen2014 produces reasonable, but not good results. As in the paper, the outputs remain blurry and edges are vanishing. The results between the NYU dataset (which was used in the original paper) and the Make3D dataset (which we used now to evaluate the model as well) are of similar quality though, so at least the model seems to be independent of the dataset. In @fig:multiscale_make3d and @fig:multiscale_nyu you can see the test images of the the different data sets.
 
-![Results from the `MultiScale` model on the `Make3d` dataset, continued.](assets/multiscale_make3d.png){#fig:multiscale_make3d}
+![Results from the `MultiScale` model on the `Make3d` dataset](assets/multiscale_make3d.png){#fig:multiscale_make3d}
 
-![Results from the `MultiScale` model on the `NYU` dataset, continued.](assets/multiscale_nyu.png){#fig:multiscale_nyu}
+![Results from the `MultiScale` model on the `NYU` dataset](assets/multiscale_nyu.png){#fig:multiscale_nyu}
 
 ## Pix2Pix
 
@@ -34,7 +32,7 @@ The GAN produces the overall best results from any of our models. The two figure
 
 ![Results from the `Pix2Pix` model on the `Nyu` dataset](assets/pix2pix_nyu_1.png){#fig:pix2pix_nyu_1}
 
-![Results from the `Pix2Pix` model on the `Nyu` dataset, continued.](assets/pix2pix_nyu_2.png){#fig:pix2pix_nyu_2}
+![Results from the `Pix2Pix` model on the `Nyu` dataset](assets/pix2pix_nyu_2.png){#fig:pix2pix_nyu_2}
 
 The Make3D data sets appears to be a harder problem, we reckon that is the case because of their more mixed scenes: It contains images from buildings, streets and the woods, which each can differ quite strongly. In @fig:pix2pix_make3d you can see another example output exemplifying this.
 

@@ -12,7 +12,7 @@ The model that we built from scratch to get a first grasp on the task consists o
 
 - `models/multiscale.py`
 
-Next, we implemented the structure given by the paper of @Eigen2014. The network on the one hand consists of a coarse network to process low level features. On the other hand the input is also passed into another convolutional network, but after the first layer (and one max pooling layer) the output is concatenated with the output of the coarse network. This leads to a refined depth map of better resolution. However, we wondered whether this coarse network is really necessary, as it is only one of 64 channels at the point of concatenation. The structure can be seen in @fig:eigen2014. For training, we again used a MSE loss function and Adam Optimizer.
+Next, we implemented the structure given by the paper of [@Eigen2014]. The network on the one hand consists of a coarse network to process low level features. On the other hand the input is also passed into another convolutional network, but after the first layer (and one max pooling layer) the output is concatenated with the output of the coarse network. This leads to a refined depth map of better resolution. However, we wondered whether this coarse network is really necessary, as it is only one of 64 channels at the point of concatenation. The structure can be seen in @fig:eigen2014. For training, we again used a MSE loss function and Adam Optimizer.
 
 ![Multi Scale Network Architecture by Eigen et al 2014](assets/eigen2014.png){#fig:eigen2014}
 
