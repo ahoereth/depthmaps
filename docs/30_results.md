@@ -1,6 +1,6 @@
 # Results  {#sec:results}
 
-Note that all results presented in this section are on test data -- data not presented to the network during training. For evaluation, we use 10% of the data. Most models on most datasets, specifically the more complex ones like `Pix2Pix` are able to nearly perfectly recreate the test data when training completed. This can be seen at the following examples of the Pix2pix network in @fig:pix2pix_make3d2_train and the MultiScale network in @fig:multiscale_make3d2_train:
+Note that all results presented in this section are on test data -- data not presented to the network during training. For evaluation, we use 10% of the data. Most models on most datasets, specifically the more complex ones like `Pix2Pix` are able to nearly perfectly recreate the train data when training completed. This can be seen at the following examples of the Pix2pix network in @fig:pix2pix_make3d2_train and the MultiScale network in @fig:multiscale_make3d2_train:
 
 ![Training data from the `Pix2pix` model on the `Make3d2` dataset](assets/pix2pix_make3d2_train.png){#fig:pix2pix_make3d2_train}
 
