@@ -10,7 +10,16 @@ author-meta: Alexander Höreth, Nina Wiedermann
 thanks:
 
 abstract:
-  Some abstract.
+  In many modern computer vision tasks image depth information is essential,
+  but commonly not available by default. While many modern systems rely on
+  stereo camera configurations, estimating depth from monocular images remains
+  to be of high relevance in both industry and research. In this paper we
+  present a new approach for obtaining depth information from monocular images
+  using deep generative adversarial networks. We show that the networks are
+  learn to both integrate global information as well as retain image details
+  achieving state-of-the-art results on two major depth image datasets.
+  Additionally we demonstrate some early work in the direction of transfer
+  learning from commonly available datasets to mobile photographs.
 keywords:
   - generative adversarial networks
   - depth estimation
