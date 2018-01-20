@@ -1,0 +1,17 @@
+---
+title: Monocular Image Depth Estimation using Generative Adversarial Networks
+authors:
+  - Alexander Höreth$^{1}$
+  - Nina Wiedemann$^{1}$
+affiliations:
+  - 1- Institute of Cognitive Science - University of Osnabrück - Germany
+  - Working Draft, \today
+author-meta: Alexander Höreth, Nina Wiedermann
+thanks:
+
+abstract:
+  Some abstract.
+keywords:
+  - generative adversarial networks
+  - depth estimation
+...
