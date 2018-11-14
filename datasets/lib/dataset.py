@@ -8,7 +8,6 @@ from pathlib import Path
 import tensorflow as tf
 from tensorflow.contrib.data import Dataset as TFDataset, Iterator
 
-
 # Temporary directory next to the `datasets` folder.
 tmpdir = (Path(__file__).parent / '..' / '..' / 'tmp')
 os.makedirs(str(tmpdir), exist_ok=True)
@@ -26,8 +25,12 @@ class Dataset:
     test_files = []
     train_files = []
 
-    def __init__(self, cleanup_on_exit=False, use_predefined_split=False,
-                 test_split=20, workers=4, checkpoint_dir=None):
+    def __init__(self,
+                 cleanup_on_exit=False,
+                 use_predefined_split=False,
+                 test_split=20,
+                 workers=4,
+                 checkpoint_dir=None):
         if cleanup_on_exit:
             atexit.register(self._cleanup)
         self.workers = workers
@@ -90,8 +93,10 @@ class Dataset:
         i, d = [tf.convert_to_tensor(x, tf.string) for x in list(zip(*data))]
         tfdataset = TFDataset.from_tensor_slices((i, d))
         tfdataset = tfdataset.shuffle(buffer_size=len(data[0]))
-        tfdataset = tfdataset.map(self._parse_images, num_threads=self.workers,
-                                  output_buffer_size=1000)
+        tfdataset = tfdataset.map(
+            self._parse_images,
+            num_threads=self.workers,
+            output_buffer_size=1000)
         tfdataset = tfdataset.batch(self.batchsize)
         tfdataset = tfdataset.repeat(epochs)
         iterator = tfdataset.make_one_shot_iterator()
@@ -154,12 +159,16 @@ class Dataset:
         random.shuffle(data)
         print('Showing the complete dataset (test and train) in random order.')
         print('Dataset size: ', len(data))
-        Dataviewer(data, name=self.__class__.__name__,
-                   keys=['image', 'depth'],
-                   cmaps={'depth': 'gray'})
+        Dataviewer(
+            data,
+            name=self.__class__.__name__,
+            keys=['image', 'depth'],
+            cmaps={'depth': 'gray'})
 
     def __str__(self):
         """Creates a human readable test file csv."""
         sub = len(str(self.directory)) + 1
-        return '\n'.join([','.join([image[sub:], depth[sub:]])
-                          for image, depth in self.test_files])
+        return '\n'.join([
+            ','.join([image[sub:], depth[sub:]])
+            for image, depth in self.test_files
+        ])

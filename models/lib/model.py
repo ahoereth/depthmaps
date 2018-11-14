@@ -19,8 +19,8 @@ class Model:
 
     def __init__(self, dataset, checkpoint_dir=None):
         time = datetime.now().strftime('%y%m%d-%H%M')
-        self.logdir = (Path('logs') / type(self).__name__ /
-                       type(dataset).__name__ / time)
+        self.logdir = (
+            Path('logs') / type(self).__name__ / type(dataset).__name__ / time)
 
         # Save the list of test files.
         os.makedirs(str(self.logdir), exist_ok=True)
@@ -42,9 +42,8 @@ class Model:
         self.inputs, self.targets = feed
 
         # Create the network.
-        outputs, train_op, losses = self.build_network(self.inputs,
-                                                       self.targets,
-                                                       self.training)
+        outputs, train_op, losses = self.build_network(
+            self.inputs, self.targets, self.training)
 
         # Summarize train and test loss.
         ema_train = tf.train.ExponentialMovingAverage(decay=0.99)
@@ -55,8 +54,7 @@ class Model:
 
         # Summarize losses depending on current phase.
         for i, loss in enumerate(losses):
-            average = tf.cond(self.training,
-                              lambda: ema_train.average(loss),
+            average = tf.cond(self.training, lambda: ema_train.average(loss),
                               lambda: ema_test.average(loss))
             tf.summary.scalar('loss/{}'.format(i), average)
 
@@ -81,22 +79,25 @@ class Model:
         # Keeping all checkpoints in order to actually use the best one for
         # inference in the future.
         saver = tf.train.Saver(max_to_keep=0)
-        checker = tf.train.CheckpointSaverHook(checkpoint_dir=test_logs,
-                                               save_secs=60 * 10,  # 10 minutes
-                                               saver=saver)
+        checker = tf.train.CheckpointSaverHook(
+            checkpoint_dir=test_logs,
+            save_secs=60 * 10,  # 10 minutes
+            saver=saver)
 
         # Writing summaries individually for testing and training data.
-        summarizer = tf.train.SummarySaverHook(output_dir=train_logs,
-                                               summary_op=self.summaries,
-                                               save_steps=200)
-        tester = FeedSummarySaverHook({self.feedhandle: test_handle_op},
-                                      output_dir=test_logs,
-                                      summary_op=self.summaries,
-                                      save_steps=200)
+        summarizer = tf.train.SummarySaverHook(
+            output_dir=train_logs, summary_op=self.summaries, save_steps=200)
+        tester = FeedSummarySaverHook(
+            {
+                self.feedhandle: test_handle_op
+            },
+            output_dir=test_logs,
+            summary_op=self.summaries,
+            save_steps=200)
 
         # Log how many steps the model makes per second.
-        timer = tf.train.StepCounterHook(output_dir=train_logs,
-                                         every_n_steps=200)
+        timer = tf.train.StepCounterHook(
+            output_dir=train_logs, every_n_steps=200)
 
         config = tf.ConfigProto()
         config.graph_options.optimizer_options.global_jit_level = \
@@ -104,8 +105,11 @@ class Model:
 
         hooks = [checker, summarizer, timer, tester]
         ckp = test_logs if self.checkpoint_dir is None else self.checkpoint_dir
-        kwargs = dict(checkpoint_dir=ckp, hooks=hooks, config=config,
-                      stop_grace_period_secs=10)
+        kwargs = dict(
+            checkpoint_dir=ckp,
+            hooks=hooks,
+            config=config,
+            stop_grace_period_secs=10)
 
         # Model is being trained directly, update checkpoint location.
         self.checkpoint_dir = test_logs
@@ -114,8 +118,10 @@ class Model:
         with tf.train.SingularMonitoredSession(**kwargs) as sess:
             handle = sess.raw_session().run(handle_op)
             while not sess.should_stop():
-                sess.run(self.train_op, {self.feedhandle: handle,
-                                         self.training: True})
+                sess.run(self.train_op, {
+                    self.feedhandle: handle,
+                    self.training: True
+                })
 
     def evaluate(self):
         """Evaluate the model.

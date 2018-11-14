@@ -16,7 +16,6 @@ from scipy import misc as spmisc
 
 from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
 
-
 URL = 'http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled.mat'
 
 

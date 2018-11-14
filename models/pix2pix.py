@@ -20,8 +20,13 @@ class Pix2Pix(Model):
     batchsize = 1
 
     @staticmethod
-    def conv2d(inputs, num_outputs, kernel_size=(4, 4), strides=2,
-               padding='SAME', activation=lrelu, norm=False):
+    def conv2d(inputs,
+               num_outputs,
+               kernel_size=(4, 4),
+               strides=2,
+               padding='SAME',
+               activation=lrelu,
+               norm=False):
         """Wrapper for tf.layers.conv2d with default parameters.
 
         Note the following quote, which also applies to conv2d_transpose:
@@ -32,21 +37,34 @@ class Pix2Pix(Model):
         > and has been demonstrated to be effective at image generation tasks.
         """
         init = tf.random_normal_initializer(0, 0.02)
-        net = tf.layers.conv2d(inputs, num_outputs, kernel_size, strides,
-                               padding=padding,
-                               kernel_initializer=init)
+        net = tf.layers.conv2d(
+            inputs,
+            num_outputs,
+            kernel_size,
+            strides,
+            padding=padding,
+            kernel_initializer=init)
         if norm:
             net = tf.layers.batch_normalization(net, training=True)
         return activation(net)
 
     @staticmethod
-    def conv2d_transpose(inputs, num_outputs, kernel_size=(4, 4), strides=2,
-                         padding='SAME', activation=tf.nn.relu, norm=None):
+    def conv2d_transpose(inputs,
+                         num_outputs,
+                         kernel_size=(4, 4),
+                         strides=2,
+                         padding='SAME',
+                         activation=tf.nn.relu,
+                         norm=None):
         """Wrapper for tf.layers.conv2d_transpose with default parameters."""
         init = tf.random_normal_initializer(0, 0.02)
-        net = tf.layers.conv2d_transpose(inputs, num_outputs, kernel_size,
-                                         strides, padding=padding,
-                                         kernel_initializer=init)
+        net = tf.layers.conv2d_transpose(
+            inputs,
+            num_outputs,
+            kernel_size,
+            strides,
+            padding=padding,
+            kernel_initializer=init)
         if norm is not None:
             net = tf.layers.batch_normalization(net, training=True)
         return activation(net)
@@ -170,8 +188,9 @@ class Pix2Pix(Model):
                 return optimizer.minimize(d_loss, global_step, d_theta)
 
         # Run train operations alternating.
-        train = tf.cond(tf.cast(global_step % 2, tf.bool),
-                        train_generator, train_discriminator)
+        train = tf.cond(
+            tf.cast(global_step % 2, tf.bool), train_generator,
+            train_discriminator)
 
         # Scale outputs back to 0/1 range.
         outputs = (generator + 1) / 2.

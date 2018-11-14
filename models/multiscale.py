@@ -30,32 +30,37 @@ class MultiScale(Model):
         tf.summary.histogram('target', targets)
 
         with tf.variable_scope('coarse'):
-            coarse = tf.layers.conv2d(inputs, 96, 11, activation=tf.nn.relu,
-                                      strides=4)
+            coarse = tf.layers.conv2d(
+                inputs, 96, 11, activation=tf.nn.relu, strides=4)
             coarse = tf.layers.max_pooling2d(coarse, pool_size=2, strides=2)
-            coarse = tf.layers.conv2d(coarse, 256, 5, activation=tf.nn.relu,
-                                      padding='same')
+            coarse = tf.layers.conv2d(
+                coarse, 256, 5, activation=tf.nn.relu, padding='same')
             coarse = tf.layers.max_pooling2d(coarse, pool_size=2, strides=2)
-            coarse = tf.layers.conv2d(coarse, 384, 3, activation=tf.nn.relu,
-                                      padding='same')
-            coarse = tf.layers.conv2d(coarse, 384, 3, activation=tf.nn.relu,
-                                      padding='same')
-            coarse = tf.layers.conv2d(coarse, 256, 3, activation=tf.nn.relu,
-                                      strides=2)
+            coarse = tf.layers.conv2d(
+                coarse, 384, 3, activation=tf.nn.relu, padding='same')
+            coarse = tf.layers.conv2d(
+                coarse, 384, 3, activation=tf.nn.relu, padding='same')
+            coarse = tf.layers.conv2d(
+                coarse, 256, 3, activation=tf.nn.relu, strides=2)
             coarse = tf.reshape(coarse, (-1, 8 * 6 * 256))
             coarse = tf.layers.dense(coarse, 4096, activation=tf.nn.relu)
             coarse = tf.layers.dropout(coarse, rate=.5, training=training)
             coarse = tf.layers.dense(coarse, 74 * 55)
             coarse = tf.reshape(coarse, (-1, 74, 55, 1))
         with tf.variable_scope('fine'):
-            fine = tf.layers.conv2d(inputs, 63, 9, activation=tf.nn.relu,
-                                    strides=2,)
+            fine = tf.layers.conv2d(
+                inputs,
+                63,
+                9,
+                activation=tf.nn.relu,
+                strides=2,
+            )
             fine = tf.layers.max_pooling2d(fine, pool_size=2, strides=2)
             fine = tf.concat([fine, coarse], 3)  # Coarse results enter!!
-            fine = tf.layers.conv2d(fine, 64, 5, activation=tf.nn.relu,
-                                    padding='same')
-            outputs = tf.layers.conv2d(fine, 1, 5, padding='same',
-                                       activation=tf.nn.tanh)
+            fine = tf.layers.conv2d(
+                fine, 64, 5, activation=tf.nn.relu, padding='same')
+            outputs = tf.layers.conv2d(
+                fine, 1, 5, padding='same', activation=tf.nn.tanh)
 
         loss = tf.losses.mean_squared_error(targets, outputs)
         global_step = tf.train.get_or_create_global_step()

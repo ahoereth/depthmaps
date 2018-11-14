@@ -31,14 +31,19 @@ from PIL import Image
 
 from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
 
-
 FILES = {
-    'feature_data': 'http://cs.stanford.edu/people/asaxena/learningdepth/Data/Dataset1_Images.tar.gz',
-    'feature_targets': 'http://cs.stanford.edu/people/asaxena/learningdepth/Data/Dataset1_Depths.tar.gz',
-    'test_data': 'http://cs.stanford.edu/people/asaxena/learningdepth/Data/Dataset2_Images.tar.gz',
-    'test_targets': 'http://www.cs.cornell.edu/~asaxena/learningdepth/Data/Dataset2_Depths.tar.gz',
-    'train_data': 'http://www.cs.cornell.edu/~asaxena/learningdepth/Data/Dataset3_Images.tar.gz',
-    'train_targets': 'http://cs.stanford.edu/people/asaxena/learningdepth/Data/Dataset3_Depths.tar.gz',
+    'feature_data':
+    'http://cs.stanford.edu/people/asaxena/learningdepth/Data/Dataset1_Images.tar.gz',
+    'feature_targets':
+    'http://cs.stanford.edu/people/asaxena/learningdepth/Data/Dataset1_Depths.tar.gz',
+    'test_data':
+    'http://cs.stanford.edu/people/asaxena/learningdepth/Data/Dataset2_Images.tar.gz',
+    'test_targets':
+    'http://www.cs.cornell.edu/~asaxena/learningdepth/Data/Dataset2_Depths.tar.gz',
+    'train_data':
+    'http://www.cs.cornell.edu/~asaxena/learningdepth/Data/Dataset3_Images.tar.gz',
+    'train_targets':
+    'http://cs.stanford.edu/people/asaxena/learningdepth/Data/Dataset3_Depths.tar.gz',
 }
 
 

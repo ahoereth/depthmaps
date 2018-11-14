@@ -23,7 +23,9 @@ else:
 class Dataviewer:
     AVAILABLE = GUI_AVAILABLE
 
-    def __init__(self, dataset, *,
+    def __init__(self,
+                 dataset,
+                 *,
                  rows=3,
                  keys=['img', 'depth'],
                  cmaps={'depth': 'jet'},
@@ -60,8 +62,7 @@ class Dataviewer:
         self.show_next()
 
         self.keycb = self.figure.canvas.mpl_connect(
-            'key_press_event',
-            lambda event: self.__key_press_event(event))
+            'key_press_event', lambda event: self.__key_press_event(event))
 
         plt.show()
 
@@ -102,9 +103,8 @@ class Dataviewer:
             if key == self.keys[-1]:
                 self.current = (self.current + 1) % len(self.dataset)
 
-        self.figure.suptitle('Showing samples {} to {}'
-                             .format(first,
-                                     (self.current - 1) % len(self.dataset)))
+        self.figure.suptitle('Showing samples {} to {}'.format(
+            first, (self.current - 1) % len(self.dataset)))
         self.figure.canvas.draw()
 
     def __key_press_event(self, event):

@@ -10,7 +10,7 @@ from .pix2pix import Pix2Pix
 
 class Generator(Pix2Pix):
 
-        # print(get_available_gpus())
+    # print(get_available_gpus())
     def build_network(self, inputs, targets, training=False):
         global_step = tf.train.get_or_create_global_step()
 
@@ -21,8 +21,8 @@ class Generator(Pix2Pix):
         # Create the same generator network structure as used by Isola 2016.
         generator = self.make_generator(inputs)
 
-        loss = tf.losses.mean_squared_error(labels=targets,
-                                            predictions=generator)
+        loss = tf.losses.mean_squared_error(
+            labels=targets, predictions=generator)
         optimizer = tf.train.AdamOptimizer(1e-4)
         train_op = optimizer.minimize(loss, global_step)
 

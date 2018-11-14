@@ -8,6 +8,7 @@ from urllib import request
 
 def maybe_download(target: str, url: str, *, force=False):
     """Download a file if it does not exist at the specified target."""
+
     def progress(count, size, total):
         total = total / (1024 * 1024)
         size = (size / (1024 * 1024)) * count

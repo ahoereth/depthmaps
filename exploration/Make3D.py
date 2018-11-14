@@ -31,7 +31,6 @@ from scipy.io import loadmat
 from scipy import misc as spmisc
 from PIL import Image
 
-
 TRAIN_DATA = 'http://cs.stanford.edu/group/reconstruction3d/Train400Img.tar.gz'
 TRAIN_TARGETS = 'http://cs.stanford.edu/group/reconstruction3d/Train400Depth.tgz'
 TEST_DATA = 'http://www.cs.cornell.edu/~asaxena/learningdepth/Test134.tar.gz'

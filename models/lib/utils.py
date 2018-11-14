@@ -29,5 +29,5 @@ def to_tuple(*args):
         try:
             result.extend(arg)
         except TypeError:
-            result.extend((arg,))
+            result.extend((arg, ))
     return tuple(result)

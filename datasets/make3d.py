@@ -34,12 +34,15 @@ from PIL import Image
 
 from .lib import DATA_DIR, Dataset, maybe_extract, maybe_download
 
-
 FILES = {
-    'train_data': 'http://cs.stanford.edu/group/reconstruction3d/Train400Img.tar.gz',
-    'train_targets': 'http://cs.stanford.edu/group/reconstruction3d/Train400Depth.tgz',
-    'test_data': 'http://www.cs.cornell.edu/~asaxena/learningdepth/Test134.tar.gz',
-    'test_targets': 'http://www.cs.cornell.edu/~asaxena/learningdepth/Test134Depth.tar.gz',
+    'train_data':
+    'http://cs.stanford.edu/group/reconstruction3d/Train400Img.tar.gz',
+    'train_targets':
+    'http://cs.stanford.edu/group/reconstruction3d/Train400Depth.tgz',
+    'test_data':
+    'http://www.cs.cornell.edu/~asaxena/learningdepth/Test134.tar.gz',
+    'test_targets':
+    'http://www.cs.cornell.edu/~asaxena/learningdepth/Test134Depth.tar.gz',
 }
 
 
@@ -48,6 +51,7 @@ class Make3D(Dataset):
     has_predefined_split = True
     input_shape = (480, 320)
     target_shape = (55 * 480 // 320, 55)
+
     # input_shape = (2272, 1704)
     # target_shape = (55, 305)
 

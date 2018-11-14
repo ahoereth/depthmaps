@@ -15,9 +15,9 @@ class FeedSummarySaverHook(tf.train.SummarySaverHook):
                 self._finalized = False
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
-        self._request_summary = (
-            self._next_step is None or
-            self._timer.should_trigger_for_step(self._next_step))
+        self._request_summary = (self._next_step is None
+                                 or self._timer.should_trigger_for_step(
+                                     self._next_step))
         requests = {'global_step': self._global_step_tensor}
 
         # Evaluate tensors in the feed_dict once and store them.
